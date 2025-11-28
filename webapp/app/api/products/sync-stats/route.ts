@@ -14,7 +14,7 @@ const execAsync = promisify(exec)
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession()
-    if (!session) {
+    if (!session || !session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
       // Try to find matching ad
       const matchingAd = userAds.find((ad: any) => {
         // Match by ad ID (most reliable)
-        if (product.marktplaatsAdId && ad.ad_id && ad.ad_id === product.marktplaatsAdId) {
+        const productAdId = (product as any).marktplaatsAdId
+        if (productAdId && ad.ad_id && ad.ad_id === productAdId) {
           return true
         }
         // Match by URL (exact match)

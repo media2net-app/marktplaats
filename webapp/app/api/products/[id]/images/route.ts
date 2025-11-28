@@ -14,7 +14,7 @@ export async function GET(
     const params = await context.params
     const session = await getServerSession()
     
-    if (!session) {
+    if (!session || !session.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

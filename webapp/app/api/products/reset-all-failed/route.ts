@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     
     // Get user ID from session or use first user for API key mode
     let userId: string | null = null
-    if (session) {
+    if (session && session.user) {
       userId = session.user.id
     } else if (isApiKeyValid) {
       const firstUser = await prisma.user.findFirst()

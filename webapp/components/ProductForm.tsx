@@ -9,6 +9,13 @@ interface Product {
   price: number
   articleNumber: string
   status: string
+  condition?: string | null
+  material?: string | null
+  thickness?: string | null
+  totalSurface?: string | null
+  deliveryOption?: string | null
+  location?: string | null
+  categoryId?: string | null
 }
 
 interface Category {

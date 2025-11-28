@@ -39,7 +39,7 @@ export default function ProductEditForm({ product }: ProductEditFormProps) {
     setLoading(false)
   }, [product])
 
-  const handleUpdate = async (updatedProduct: Product) => {
+  const handleUpdate = async (updatedProduct: any) => {
     try {
       const response = await fetch(`/api/products/${product.id}`, {
         method: 'PUT',
@@ -49,13 +49,13 @@ export default function ProductEditForm({ product }: ProductEditFormProps) {
           description: updatedProduct.description,
           price: updatedProduct.price,
           articleNumber: updatedProduct.articleNumber,
-          condition: updatedProduct.condition,
-          material: updatedProduct.material,
-          thickness: updatedProduct.thickness,
-          totalSurface: updatedProduct.totalSurface,
-          deliveryOption: updatedProduct.deliveryOption,
-          location: updatedProduct.location,
-          categoryId: updatedProduct.categoryId,
+          condition: updatedProduct.condition || null,
+          material: updatedProduct.material || null,
+          thickness: updatedProduct.thickness || null,
+          totalSurface: updatedProduct.totalSurface || null,
+          deliveryOption: updatedProduct.deliveryOption || null,
+          location: updatedProduct.location || null,
+          categoryId: updatedProduct.categoryId || null,
         }),
       })
 

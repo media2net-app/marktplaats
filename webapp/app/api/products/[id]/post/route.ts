@@ -105,11 +105,36 @@ export async function POST(
         }, { status: 500 })
       }
 
-      // Update product status to completed
+      // Try to extract result JSON from output
+      let adStats: any = null
+      const resultMatch = output.match(/RESULT_JSON:({.+})/)
+      if (resultMatch) {
+        try {
+          adStats = JSON.parse(resultMatch[1])
+        } catch (e) {
+          console.error('Failed to parse result JSON:', e)
+        }
+      }
+
+      // Parse posted_at date if available
+      let postedAtDate: Date | null = null
+      if (adStats?.posted_at) {
+        // Try to parse Dutch date format like "6 nov '25"
+        // For now, we'll store the raw string and parse it properly later
+        // Or use current date as fallback
+        postedAtDate = new Date()
+      }
+
+      // Update product status to completed with stats
       await prisma.product.update({
         where: { id: params.id },
         data: { 
           status: 'completed',
+          marktplaatsUrl: adStats?.ad_url || null,
+          marktplaatsAdId: adStats?.ad_id || null,
+          views: adStats?.views || 0,
+          saves: adStats?.saves || 0,
+          postedAt: postedAtDate,
         },
       })
 

@@ -21,7 +21,7 @@ body {
   background: #f9fafb;
 }
 
-/* Ensure all form elements have visible black text */
+/* Ensure all form elements have visible black text and better styling */
 input[type="text"],
 input[type="number"],
 input[type="email"],
@@ -32,6 +32,25 @@ textarea,
 select {
   color: #111827 !important;
   background-color: #ffffff !important;
+  padding: 0.75rem 1rem !important;
+  border: 2px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
 }
 
 input[type="text"]::placeholder,

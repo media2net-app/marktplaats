@@ -45,6 +45,10 @@ model Product {
   location      String?
   status        String   @default("pending") // pending, processing, completed, failed
   marktplaatsUrl String?
+  marktplaatsAdId String? // Advertentienummer (bijv. a1519860984)
+  views         Int      @default(0) // Aantal keer bekeken
+  saves         Int      @default(0) // Aantal keer opgeslagen
+  postedAt      DateTime? // Datum waarop geplaatst op Marktplaats
   categoryId    String?
   category      Category? @relation(fields: [categoryId], references: [id])
   createdAt     DateTime @default(now())

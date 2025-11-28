@@ -4,7 +4,7 @@ import os
 import time
 import json
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from dotenv import load_dotenv
 from playwright.async_api import async_playwright, BrowserContext, Page
@@ -36,7 +36,7 @@ class Product:
 
 
 def read_products_from_api(api_url: str) -> List[Product]:
-	"""Read product data from API endpoint."""
+	"""Read product data from API endpoint. Can return single product or list of products."""
 	if not requests:
 		raise ImportError("requests library is required for API mode. Install with: pip install requests")
 	
@@ -45,28 +45,35 @@ def read_products_from_api(api_url: str) -> List[Product]:
 		response.raise_for_status()
 		data = response.json()
 		
-		# Convert API response to Product
-		photos = data.get('photos', []) or []
-		delivery_methods = data.get('delivery_methods', []) or []
+		# Check if it's a list or single object
+		products_data = data if isinstance(data, list) else [data]
 		
-		product = Product(
-			title=data.get('title', '').strip(),
-			description=data.get('description', '').strip(),
-			price=str(data.get('price', '')).strip(),
-			category_path=data.get('category_path') or None,
-			location=data.get('location') or None,
-			photos=photos,
-			article_number=data.get('article_number') or None,
-			condition=data.get('condition') or None,
-			delivery_methods=delivery_methods,
-			material=data.get('material') or None,
-			thickness=data.get('thickness') or None,
-			total_surface=data.get('total_surface') or None,
-			delivery_option=data.get('delivery_option') or None,
-		)
-		return [product]
+		products = []
+		for item in products_data:
+			photos = item.get('photos', []) or []
+			delivery_methods = item.get('delivery_methods', []) or []
+			
+			product = Product(
+				title=item.get('title', '').strip(),
+				description=item.get('description', '').strip(),
+				price=str(item.get('price', '')).strip(),
+				category_path=item.get('category_path') or None,
+				location=item.get('location') or None,
+				photos=photos,
+				article_number=item.get('article_number') or None,
+				condition=item.get('condition') or None,
+				delivery_methods=delivery_methods,
+				material=item.get('material') or None,
+				thickness=item.get('thickness') or None,
+				total_surface=item.get('total_surface') or None,
+				delivery_option=item.get('delivery_option') or None,
+			)
+			products.append(product)
+		
+		print(f"✅ {len(products)} product(en) opgehaald van API")
+		return products
 	except Exception as e:
-		print(f"Error fetching product from API: {e}")
+		print(f"Error fetching products from API: {e}")
 		raise
 
 
@@ -322,7 +329,47 @@ async def select_free_bundle(page: Page) -> None:
 		pass
 
 
-async def publish_ad(page: Page) -> None:
+async def get_posted_ad_url(page: Page) -> Optional[str]:
+	"""Extract the URL of the posted ad from the current page."""
+	try:
+		# Wait a bit for redirect or page load
+		await page.wait_for_timeout(3000)
+		
+		# Check current URL - if it's an ad page, return it
+		current_url = page.url
+		if '/v/' in current_url or '/a' in current_url:
+			return current_url
+		
+		# Try to find a link to the ad
+		ad_link = page.locator("a[href*='/v/'], a[href*='/a']").first
+		if await ad_link.count() > 0:
+			href = await ad_link.get_attribute('href')
+			if href:
+				if href.startswith('http'):
+					return href
+				else:
+					base_url = os.getenv('MARKTPLAATS_BASE_URL', 'https://www.marktplaats.nl')
+					return f"{base_url}{href}"
+		
+		# Try to find "Bekijk je advertentie" link
+		view_ad_link = page.get_by_text("Bekijk je advertentie", exact=False)
+		if await view_ad_link.count() > 0:
+			parent = view_ad_link.first.locator("..")
+			href = await parent.get_attribute('href')
+			if href:
+				if href.startswith('http'):
+					return href
+				else:
+					base_url = os.getenv('MARKTPLAATS_BASE_URL', 'https://www.marktplaats.nl')
+					return f"{base_url}{href}"
+		
+		return None
+	except Exception as e:
+		print(f"Error getting ad URL: {e}")
+		return None
+
+
+async def publish_ad(page: Page) -> Optional[str]:
 	# Try specific id first
 	try:
 		btn = page.locator("#syi-place-ad-button")
@@ -336,12 +383,12 @@ async def publish_ad(page: Page) -> None:
 			try:
 				await btn.first.click(force=True)
 				await page.wait_for_load_state('load')
-				return
+				return await get_posted_ad_url(page)
 			except Exception:
 				try:
 					await btn.first.evaluate("(b)=>b.click()")
 					await page.wait_for_load_state('load')
-					return
+					return await get_posted_ad_url(page)
 				except Exception:
 					pass
 	except Exception:
@@ -360,7 +407,7 @@ async def publish_ad(page: Page) -> None:
 				await locator.first.scroll_into_view_if_needed()
 				await locator.first.click(force=True)
 				await page.wait_for_load_state('load')
-				return
+				return await get_posted_ad_url(page)
 		except Exception:
 			continue
 	# Variants of 'Plaats je advertentie'
@@ -379,7 +426,7 @@ async def publish_ad(page: Page) -> None:
 				await loc.first.scroll_into_view_if_needed()
 				await loc.first.click(force=True)
 				await page.wait_for_load_state('load')
-				return
+				return await get_posted_ad_url(page)
 		except Exception:
 			continue
 	# Form submit fallback and Enter
@@ -388,17 +435,19 @@ async def publish_ad(page: Page) -> None:
 		if await form.count() > 0:
 			await form.evaluate("(f)=>f.submit()")
 			await page.wait_for_load_state('load')
-			return
+			return await get_posted_ad_url(page)
 	except Exception:
 		pass
 	try:
 		await page.keyboard.press("Enter")
 		await page.wait_for_timeout(700)
+		return await get_posted_ad_url(page)
 	except Exception:
 		pass
+	return None
 
 
-async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optional[str], login_only: bool, keep_open: bool=False) -> None:
+async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optional[str], login_only: bool, keep_open: bool=False) -> Optional[List[Dict]]:
 	load_dotenv(override=True)
 	base_url = os.getenv('MARKTPLAATS_BASE_URL', 'https://www.marktplaats.nl').rstrip('/')
 	user_data_dir = os.getenv('USER_DATA_DIR', './user_data')
@@ -433,6 +482,12 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 			products = read_products(csv_path)
 		else:
 			raise SystemExit("Either --csv or --api is required when not using --login")
+		# Import scrape function
+		import sys
+		sys.path.insert(0, os.path.dirname(__file__))
+		from scrape_ad_stats import scrape_ad_stats
+		
+		all_results = []
 		for index, product in enumerate(products, start=1):
 			print(f"Posting {index}/{len(products)}: {product.title}")
 			await click_place_ad(page, base_url)
@@ -440,9 +495,67 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 			await fill_basic_fields(page, product)
 			await upload_photos(page, product, media_root)
 			await select_free_bundle(page)
-			await publish_ad(page)
+			ad_url = await publish_ad(page)
+			
+			# Scrape stats if ad was posted successfully
+			ad_stats = None
+			if ad_url:
+				print(f"Ad posted at: {ad_url}")
+				print("Scraping ad statistics...")
+				
+				# Try to scrape from individual ad page first
+				ad_stats = await scrape_ad_stats(page, ad_url)
+				
+				# If that fails or doesn't get all data, try user page
+				if not ad_stats or not ad_stats.get('ad_id'):
+					try:
+						from scrape_user_ads import get_user_url_from_ad, scrape_user_ads
+						user_url = await get_user_url_from_ad(page, ad_url)
+						if user_url:
+							print(f"Found user page: {user_url}")
+							print("Scraping all ads from user page...")
+							user_ads = await scrape_user_ads(page, user_url)
+							
+							# Find matching ad by article number or title
+							for user_ad in user_ads:
+								if user_ad.get('ad_id') and product.article_number:
+									# Try to match by checking if article number might be in title or URL
+									if product.article_number in (user_ad.get('title', '') or ''):
+										ad_stats = user_ad
+										break
+								elif user_ad.get('ad_url') == ad_url:
+									ad_stats = user_ad
+									break
+					except Exception as e:
+						print(f"Fout bij scrapen user page: {e}")
+				
+				if ad_stats:
+					print(f"Stats scraped: Ad ID={ad_stats.get('ad_id')}, Views={ad_stats.get('views')}, Saves={ad_stats.get('saves')}")
+			
 			await page.wait_for_timeout(action_delay_ms)
 			print(f"✔ Succesvol verwerkt: {product.title}")
+			
+			# Store result for API mode
+			product_result = {
+				'ad_url': ad_url,
+				'ad_id': ad_stats.get('ad_id') if ad_stats else None,
+				'views': ad_stats.get('views', 0) if ad_stats else 0,
+				'saves': ad_stats.get('saves', 0) if ad_stats else 0,
+				'posted_at': ad_stats.get('posted_at') if ad_stats else None,
+				'article_number': product.article_number,
+				'title': product.title,
+				'status': 'completed' if ad_url else 'failed',
+			}
+			
+			# For single product mode (has product_id), return immediately
+			if product_id:
+				import json
+				print(f"RESULT_JSON:{json.dumps(product_result)}")
+				all_results.append(product_result)
+				break
+			
+			# For batch mode, collect results
+			all_results.append(product_result)
 
 		print("Done.")
 		if keep_open:
@@ -450,6 +563,8 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 			await page.wait_for_timeout(3600000)
 		else:
 			await browser.close()
+		
+		return all_results
 
 
 def parse_args() -> tuple[Optional[str], Optional[str], Optional[str], bool, bool]:

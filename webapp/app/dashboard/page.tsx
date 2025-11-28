@@ -14,6 +14,9 @@ export default async function DashboardPage() {
   const products = await prisma.product.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
+    include: {
+      category: true,
+    },
   })
 
   return (

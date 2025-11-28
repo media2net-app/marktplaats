@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface Product {
   id: string
@@ -18,39 +18,45 @@ interface ProductListProps {
 }
 
 export default function ProductList({ products }: ProductListProps) {
-  const [processingId, setProcessingId] = useState<string | null>(null)
+  const [productImages, setProductImages] = useState<Record<string, string | null>>({})
 
-  const handlePostToMarktplaats = async (productId: string) => {
-    setProcessingId(productId)
-    try {
-      const response = await fetch(`/api/products/${productId}/post`, {
-        method: 'POST',
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        // Show detailed error message
-        const errorMsg = result.error || 'Fout bij plaatsen'
-        const details = result.details ? `\n\nDetails:\n${JSON.stringify(result.details, null, 2)}` : ''
-        alert(`Fout bij plaatsen: ${errorMsg}${details}`)
-        console.error('Post error:', result)
-        return
+  useEffect(() => {
+    // Load images for all products
+    const loadImages = async () => {
+      const imageMap: Record<string, string | null> = {}
+      
+      for (const product of products) {
+        try {
+          const response = await fetch(`/api/products/${product.id}/image`)
+          if (response.ok && response.headers.get('content-type')?.startsWith('image/')) {
+            // Image is returned directly, create blob URL
+            const blob = await response.blob()
+            imageMap[product.id] = URL.createObjectURL(blob)
+          } else if (response.ok) {
+            // Fallback: JSON response with image path
+            const data = await response.json()
+            imageMap[product.id] = data.image
+          }
+        } catch (error) {
+          console.error(`Error loading image for product ${product.id}:`, error)
+          imageMap[product.id] = null
+        }
       }
-
-      if (result.success) {
-        alert('Product succesvol geplaatst op Marktplaats!')
-        window.location.reload()
-      } else {
-        alert(`Fout: ${result.error || 'Onbekende fout'}`)
+      
+      setProductImages(imageMap)
+      
+      // Cleanup blob URLs on unmount
+      return () => {
+        Object.values(imageMap).forEach(url => {
+          if (url && url.startsWith('blob:')) {
+            URL.revokeObjectURL(url)
+          }
+        })
       }
-    } catch (error: any) {
-      console.error('Post error:', error)
-      alert(`Er is een fout opgetreden bij het plaatsen: ${error.message || 'Onbekende fout'}`)
-    } finally {
-      setProcessingId(null)
     }
-  }
+
+    loadImages()
+  }, [products])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -97,14 +103,40 @@ export default function ProductList({ products }: ProductListProps) {
       {products.map((product) => (
         <div
           key={product.id}
-          className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all p-6"
+          className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all p-6 cursor-pointer"
+          onClick={() => window.location.href = `/products/${product.id}/edit`}
         >
           <div className="flex items-start justify-between gap-4">
+            {/* Product Image */}
+            {productImages[product.id] ? (
+              <div className="flex-shrink-0">
+                <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 bg-gray-100">
+                  <img
+                    src={productImages[product.id]!}
+                    alt={product.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Hide image on error
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex-shrink-0">
+                <div className="w-24 h-24 rounded-lg border border-gray-200 bg-gray-100 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+            )}
+            
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-3 mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-lg font-bold text-gray-900">{product.title}</h3>
+                    <h3 className="text-lg font-bold text-gray-900 hover:text-indigo-600 transition-colors">{product.title}</h3>
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(product.status)}`}>
                       {getStatusText(product.status)}
                     </span>
@@ -142,31 +174,49 @@ export default function ProductList({ products }: ProductListProps) {
               </div>
             </div>
             
-            <div className="flex-shrink-0">
-              {product.status === 'pending' && (
+            <div className="flex-shrink-0 flex items-center gap-2">
+              {product.status === 'failed' && (
                 <button
-                  onClick={() => handlePostToMarktplaats(product.id)}
-                  disabled={processingId === product.id}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold shadow-md hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (confirm('Weet je zeker dat je dit product opnieuw wilt proberen te plaatsen?')) {
+                      try {
+                        const response = await fetch('/api/products/reset-status', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ productIds: [product.id] }),
+                        })
+                        if (response.ok) {
+                          window.location.reload()
+                        } else {
+                          alert('Fout bij resetten van product status')
+                        }
+                      } catch (error) {
+                        alert('Fout bij resetten van product status')
+                      }
+                    }
+                  }}
+                  className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded-lg font-semibold shadow-sm hover:bg-yellow-200 transition-all flex items-center gap-2 whitespace-nowrap text-sm"
+                  title="Reset naar pending en probeer opnieuw"
                 >
-                  {processingId === product.id ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Bezig...
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                      Plaats op Marktplaats
-                    </>
-                  )}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Opnieuw proberen
                 </button>
               )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  window.location.href = `/products/${product.id}/edit`
+                }}
+                className="bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg font-semibold shadow-sm hover:bg-gray-200 transition-all flex items-center gap-2 whitespace-nowrap"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Bewerken
+              </button>
             </div>
           </div>
         </div>

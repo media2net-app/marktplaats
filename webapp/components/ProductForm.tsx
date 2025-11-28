@@ -20,10 +20,12 @@ interface Category {
 }
 
 interface ProductFormProps {
+  product?: Product | null
   onSuccess?: (product: Product) => void
+  mode?: 'create' | 'edit'
 }
 
-export default function ProductForm({ onSuccess }: ProductFormProps) {
+export default function ProductForm({ product, onSuccess, mode = 'create' }: ProductFormProps) {
   const [loading, setLoading] = useState(false)
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
@@ -32,19 +34,62 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
   const [selectedCategory3, setSelectedCategory3] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
+  const [existingImages, setExistingImages] = useState<string[]>([])
+  const [removedImages, setRemovedImages] = useState<string[]>([])
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    price: '',
-    articleNumber: '',
-    condition: 'Gebruikt',
-    material: '',
-    thickness: '',
-    totalSurface: '',
-    deliveryOption: 'Ophalen of Verzenden',
-    location: '',
-    categoryId: '',
+    title: product?.title || '',
+    description: product?.description || '',
+    price: product?.price?.toString() || '',
+    articleNumber: product?.articleNumber || '',
+    condition: product?.condition || 'Gebruikt',
+    material: product?.material || '',
+    thickness: product?.thickness || '',
+    totalSurface: product?.totalSurface || '',
+    deliveryOption: product?.deliveryOption || 'Ophalen of Verzenden',
+    location: product?.location || '',
+    categoryId: product?.categoryId || '',
   })
+
+  // Set initial category selection if editing
+  useEffect(() => {
+    if (product?.categoryId && categories.length > 0) {
+      // Find the category and set the appropriate level
+      const findCategory = (cats: Category[], id: string): Category | null => {
+        for (const cat of cats) {
+          if (cat.id === id) return cat
+          if (cat.children) {
+            const found = findCategory(cat.children, id)
+            if (found) return found
+          }
+        }
+        return null
+      }
+      const cat = findCategory(categories, product.categoryId)
+      if (cat) {
+        if (cat.level === 1) setSelectedCategory1(cat.id)
+        else if (cat.level === 2) {
+          // Find parent
+          const parent = categories.find(c => c.children?.some(ch => ch.id === cat.id))
+          if (parent) {
+            setSelectedCategory1(parent.id)
+            setSelectedCategory2(cat.id)
+          }
+        } else if (cat.level === 3) {
+          // Find parent and grandparent
+          for (const l1 of categories) {
+            for (const l2 of l1.children || []) {
+              if (l2.children?.some(ch => ch.id === cat.id)) {
+                setSelectedCategory1(l1.id)
+                setSelectedCategory2(l2.id)
+                setSelectedCategory3(cat.id)
+                break
+              }
+            }
+          }
+        }
+      }
+    }
+  }, [product, categories])
 
   useEffect(() => {
     // Laad categorieën
@@ -53,6 +98,20 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
       .then(data => setCategories(data))
       .catch(err => console.error('Error loading categories:', err))
   }, [])
+
+  // Load existing images when editing
+  useEffect(() => {
+    if (mode === 'edit' && product?.id && product?.articleNumber) {
+      fetch(`/api/products/${product.id}/images`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.images && Array.isArray(data.images)) {
+            setExistingImages(data.images)
+          }
+        })
+        .catch(err => console.error('Error loading existing images:', err))
+    }
+  }, [mode, product?.id, product?.articleNumber])
 
   // Filter categorieën per level
   const level1Categories = categories.filter(c => c.level === 1)
@@ -101,12 +160,17 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     setPreviewUrls(newUrls)
   }
 
+  const removeExistingImage = (imagePath: string) => {
+    setExistingImages(prev => prev.filter(img => img !== imagePath))
+    setRemovedImages(prev => [...prev, imagePath])
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
     try {
-      // First upload photos if any
+      // Upload photos if any (for new products or when editing with new photos)
       if (selectedFiles.length > 0 && formData.articleNumber) {
         setUploadingPhotos(true)
         const uploadFormData = new FormData()
@@ -127,9 +191,40 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
         setUploadingPhotos(false)
       }
 
-      // Then create the product
-      const response = await fetch('/api/products', {
-        method: 'POST',
+      // Delete removed images if editing
+      if (mode === 'edit' && removedImages.length > 0) {
+        for (const imagePath of removedImages) {
+          try {
+            // Extract filename from path like /media/articleNumber/filename.jpg
+            const parts = imagePath.split('/')
+            const filename = parts[parts.length - 1]
+            const articleNumber = parts[parts.length - 2]
+            
+            // Delete file via API
+            await fetch(`/api/products/delete-image`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                imagePath: imagePath,
+                articleNumber: articleNumber,
+                filename: filename 
+              }),
+            })
+          } catch (error) {
+            console.error('Error deleting image:', error)
+            // Continue even if deletion fails
+          }
+        }
+      }
+
+      // Create or update the product
+      const url = mode === 'edit' && product 
+        ? `/api/products/${product.id}`
+        : '/api/products'
+      const method = mode === 'edit' ? 'PUT' : 'POST'
+      
+      const response = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -141,29 +236,31 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
         throw new Error('Fout bij opslaan')
       }
 
-      const product = await response.json()
-      onSuccess?.(product)
+      const updatedProduct = await response.json()
+      onSuccess?.(updatedProduct)
       
-      // Reset form
-      setFormData({
-        title: '',
-        description: '',
-        price: '',
-        articleNumber: '',
-        condition: 'Gebruikt',
-        material: '',
-        thickness: '',
-        totalSurface: '',
-        deliveryOption: 'Ophalen of Verzenden',
-        location: '',
-        categoryId: '',
-      })
-      setSelectedCategory1('')
-      setSelectedCategory2('')
-      setSelectedCategory3('')
-      setSelectedFiles([])
-      previewUrls.forEach(url => URL.revokeObjectURL(url))
-      setPreviewUrls([])
+      // Reset form only if creating new product
+      if (mode === 'create') {
+        setFormData({
+          title: '',
+          description: '',
+          price: '',
+          articleNumber: '',
+          condition: 'Gebruikt',
+          material: '',
+          thickness: '',
+          totalSurface: '',
+          deliveryOption: 'Ophalen of Verzenden',
+          location: '',
+          categoryId: '',
+        })
+        setSelectedCategory1('')
+        setSelectedCategory2('')
+        setSelectedCategory3('')
+        setSelectedFiles([])
+        previewUrls.forEach(url => URL.revokeObjectURL(url))
+        setPreviewUrls([])
+      }
     } catch (error) {
       alert('Er is een fout opgetreden')
     } finally {
@@ -176,59 +273,112 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Titel</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Titel</label>
           <input
             type="text"
             required
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all"
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            placeholder="Voer producttitel in"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Artikelnummer</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Artikelnummer</label>
           <input
             type="text"
             required
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all"
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
             value={formData.articleNumber}
             onChange={(e) => setFormData({ ...formData, articleNumber: e.target.value })}
+            placeholder="Bijv. ART-001"
           />
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Beschrijving</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-3">Categorie</label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-2.5 uppercase tracking-wide">Hoofdcategorie</label>
+              <select
+                className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all cursor-pointer"
+                value={selectedCategory1}
+                onChange={(e) => handleCategory1Change(e.target.value)}
+                style={{ color: '#111827' }}
+              >
+                <option value="" style={{ color: '#6b7280' }}>Selecteer...</option>
+                {level1Categories.map(cat => (
+                  <option key={cat.id} value={cat.id} style={{ color: '#111827' }}>{cat.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedCategory1 && level2Categories.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2.5 uppercase tracking-wide">Subcategorie</label>
+                <select
+                  className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all cursor-pointer"
+                  value={selectedCategory2}
+                  onChange={(e) => handleCategory2Change(e.target.value)}
+                  style={{ color: '#111827' }}
+                >
+                  <option value="" style={{ color: '#6b7280' }}>Selecteer...</option>
+                  {level2Categories.map(cat => (
+                    <option key={cat.id} value={cat.id} style={{ color: '#111827' }}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {selectedCategory2 && level3Categories.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-2.5 uppercase tracking-wide">Sub-subcategorie</label>
+                <select
+                  className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all cursor-pointer"
+                  value={selectedCategory3}
+                  onChange={(e) => setSelectedCategory3(e.target.value)}
+                  style={{ color: '#111827' }}
+                >
+                  <option value="" style={{ color: '#6b7280' }}>Selecteer...</option>
+                  {level3Categories.map(cat => (
+                    <option key={cat.id} value={cat.id} style={{ color: '#111827' }}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Beschrijving</label>
           <textarea
             required
             rows={4}
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all resize-none"
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all resize-none placeholder:text-gray-400"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Beschrijf je product..."
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Prijs (€)</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <span className="text-gray-500 sm:text-sm">€</span>
-            </div>
-            <input
-              type="number"
-              step="0.01"
-              required
-              className="block w-full pl-8 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all"
-              value={formData.price}
-              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-            />
-          </div>
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Prijs (€)</label>
+          <input
+            type="number"
+            step="0.01"
+            required
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+            value={formData.price}
+            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+            placeholder="0.00"
+          />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Staat</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Staat</label>
           <select
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all"
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all cursor-pointer"
             value={formData.condition}
             onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
           >
@@ -239,42 +389,46 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Materiaal</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Materiaal</label>
           <input
             type="text"
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all"
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
             value={formData.material}
             onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+            placeholder="Bijv. Hardschuim (Pir)"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Dikte</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Dikte</label>
           <input
             type="text"
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all"
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
             value={formData.thickness}
             onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
+            placeholder="Bijv. 4 tot 8 cm"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Oppervlakte</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Oppervlakte</label>
           <input
             type="text"
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all"
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
             value={formData.totalSurface}
             onChange={(e) => setFormData({ ...formData, totalSurface: e.target.value })}
+            placeholder="Bijv. 5 tot 10 m²"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Locatie</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Locatie</label>
           <input
             type="text"
-            className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all"
+            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
             value={formData.location}
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+            placeholder="Bijv. Amsterdam"
           />
         </div>
 
@@ -311,27 +465,63 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
             )}
           </div>
           
-          {/* Preview thumbnails */}
-          {previewUrls.length > 0 && (
-            <div className="mt-4 grid grid-cols-4 gap-4">
-              {previewUrls.map((url, index) => (
-                <div key={index} className="relative group">
-                  <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm hover:border-indigo-300 transition-colors">
-                    <img
-                      src={url}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+          {/* Existing images (edit mode) */}
+          {existingImages.length > 0 && (
+            <div className="mt-4">
+              <p className="text-sm font-medium text-gray-700 mb-2">Bestaande foto's:</p>
+              <div className="grid grid-cols-4 gap-4">
+                {existingImages.map((imagePath, index) => (
+                  <div key={`existing-${index}`} className="relative group">
+                    <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm hover:border-indigo-300 transition-colors">
+                      <img
+                        src={imagePath}
+                        alt={`Bestaande foto ${index + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Hide image on error
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeExistingImage(imagePath)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-lg hover:bg-red-600 transition-colors"
+                    >
+                      ×
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeFile(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-lg hover:bg-red-600 transition-colors"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Preview thumbnails (newly selected files) */}
+          {previewUrls.length > 0 && (
+            <div className="mt-4">
+              {existingImages.length > 0 && (
+                <p className="text-sm font-medium text-gray-700 mb-2">Nieuwe foto's:</p>
+              )}
+              <div className="grid grid-cols-4 gap-4">
+                {previewUrls.map((url, index) => (
+                  <div key={`preview-${index}`} className="relative group">
+                    <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm hover:border-indigo-300 transition-colors">
+                      <img
+                        src={url}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-7 h-7 flex items-center justify-center text-sm shadow-lg hover:bg-red-600 transition-colors"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           
@@ -345,60 +535,6 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
               </p>
             </div>
           )}
-        </div>
-
-        <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-3">Categorie</label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Hoofdcategorie</label>
-              <select
-                className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
-                value={selectedCategory1}
-                onChange={(e) => handleCategory1Change(e.target.value)}
-                style={{ color: '#111827' }}
-              >
-                <option value="" style={{ color: '#6b7280' }}>Selecteer...</option>
-                {level1Categories.map(cat => (
-                  <option key={cat.id} value={cat.id} style={{ color: '#111827' }}>{cat.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {selectedCategory1 && level2Categories.length > 0 && (
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Subcategorie</label>
-                <select
-                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
-                  value={selectedCategory2}
-                  onChange={(e) => handleCategory2Change(e.target.value)}
-                  style={{ color: '#111827' }}
-                >
-                  <option value="" style={{ color: '#6b7280' }}>Selecteer...</option>
-                  {level2Categories.map(cat => (
-                    <option key={cat.id} value={cat.id} style={{ color: '#111827' }}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {selectedCategory2 && level3Categories.length > 0 && (
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Sub-subcategorie</label>
-                <select
-                  className="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
-                  value={selectedCategory3}
-                  onChange={(e) => setSelectedCategory3(e.target.value)}
-                  style={{ color: '#111827' }}
-                >
-                  <option value="" style={{ color: '#6b7280' }}>Selecteer...</option>
-                  {level3Categories.map(cat => (
-                    <option key={cat.id} value={cat.id} style={{ color: '#111827' }}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -429,7 +565,7 @@ export default function ProductForm({ onSuccess }: ProductFormProps) {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Product Toevoegen
+              {mode === 'edit' ? 'Product Bijwerken' : 'Product Toevoegen'}
             </>
           )}
         </button>

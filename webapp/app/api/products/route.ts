@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
         deliveryOption: body.deliveryOption,
         location: body.location,
         categoryId: body.categoryId || null,
+        status: 'pending', // Always set to pending for new products
         userId: session.user.id,
       },
     })

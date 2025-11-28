@@ -1,0 +1,590 @@
+[
+  {
+    "id": "auto",
+    "name": "Auto's",
+    "level": 1,
+    "parentId": null,
+    "path": "Auto's"
+  },
+  {
+    "id": "huis-inrichting",
+    "name": "Huis en Inrichting",
+    "level": 1,
+    "parentId": null,
+    "path": "Huis en Inrichting"
+  },
+  {
+    "id": "elektronica",
+    "name": "Elektronica",
+    "level": 1,
+    "parentId": null,
+    "path": "Elektronica"
+  },
+  {
+    "id": "kleding",
+    "name": "Kleding, Schoenen & Accessoires",
+    "level": 1,
+    "parentId": null,
+    "path": "Kleding, Schoenen & Accessoires"
+  },
+  {
+    "id": "sport",
+    "name": "Sport & Outdoor",
+    "level": 1,
+    "parentId": null,
+    "path": "Sport & Outdoor"
+  },
+  {
+    "id": "hobby",
+    "name": "Hobby & Vrije tijd",
+    "level": 1,
+    "parentId": null,
+    "path": "Hobby & Vrije tijd"
+  },
+  {
+    "id": "antiek",
+    "name": "Antiek en Kunst",
+    "level": 1,
+    "parentId": null,
+    "path": "Antiek en Kunst"
+  },
+  {
+    "id": "doe-het-zelf",
+    "name": "Doe-het-zelf en Verbouw",
+    "level": 1,
+    "parentId": null,
+    "path": "Doe-het-zelf en Verbouw"
+  },
+  {
+    "id": "tuin",
+    "name": "Tuin & Terras",
+    "level": 1,
+    "parentId": null,
+    "path": "Tuin & Terras"
+  },
+  {
+    "id": "dieren",
+    "name": "Dieren en Toebehoren",
+    "level": 1,
+    "parentId": null,
+    "path": "Dieren en Toebehoren"
+  },
+  {
+    "id": "kinderen",
+    "name": "Baby's en Kinderen",
+    "level": 1,
+    "parentId": null,
+    "path": "Baby's en Kinderen"
+  },
+  {
+    "id": "muziek",
+    "name": "Muziek en Instrumenten",
+    "level": 1,
+    "parentId": null,
+    "path": "Muziek en Instrumenten"
+  },
+  {
+    "id": "boeken",
+    "name": "Boeken, Tijdschriften & Media",
+    "level": 1,
+    "parentId": null,
+    "path": "Boeken, Tijdschriften & Media"
+  },
+  {
+    "id": "computers",
+    "name": "Computers en Software",
+    "level": 1,
+    "parentId": null,
+    "path": "Computers en Software"
+  },
+  {
+    "id": "telefoons",
+    "name": "Telefoons en Toebehoren",
+    "level": 1,
+    "parentId": null,
+    "path": "Telefoons en Toebehoren"
+  },
+  {
+    "id": "foto-video",
+    "name": "Foto, Video & Optiek",
+    "level": 1,
+    "parentId": null,
+    "path": "Foto, Video & Optiek"
+  },
+  {
+    "id": "games",
+    "name": "Games en Spelcomputers",
+    "level": 1,
+    "parentId": null,
+    "path": "Games en Spelcomputers"
+  },
+  {
+    "id": "sieraden",
+    "name": "Sieraden & Tassen",
+    "level": 1,
+    "parentId": null,
+    "path": "Sieraden & Tassen"
+  },
+  {
+    "id": "verzamelen",
+    "name": "Verzamelen",
+    "level": 1,
+    "parentId": null,
+    "path": "Verzamelen"
+  },
+  {
+    "id": "zakelijk",
+    "name": "Zakelijk",
+    "level": 1,
+    "parentId": null,
+    "path": "Zakelijk"
+  },
+  {
+    "id": "diensten",
+    "name": "Diensten en Vakmensen",
+    "level": 1,
+    "parentId": null,
+    "path": "Diensten en Vakmensen"
+  },
+  {
+    "id": "auto-onderdelen",
+    "name": "Auto-onderdelen en Accessoires",
+    "level": 1,
+    "parentId": null,
+    "path": "Auto-onderdelen en Accessoires"
+  },
+  {
+    "id": "motoren",
+    "name": "Motoren",
+    "level": 1,
+    "parentId": null,
+    "path": "Motoren"
+  },
+  {
+    "id": "caravans",
+    "name": "Caravans en Kampeermateriaal",
+    "level": 1,
+    "parentId": null,
+    "path": "Caravans en Kampeermateriaal"
+  },
+  {
+    "id": "banken",
+    "name": "Banken",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Banken"
+  },
+  {
+    "id": "tafels",
+    "name": "Tafels",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Tafels"
+  },
+  {
+    "id": "stoelen",
+    "name": "Stoelen",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Stoelen"
+  },
+  {
+    "id": "kasten",
+    "name": "Kasten",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Kasten"
+  },
+  {
+    "id": "bedden",
+    "name": "Bedden",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Bedden"
+  },
+  {
+    "id": "meubels-overig",
+    "name": "Meubels Overig",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Meubels Overig"
+  },
+  {
+    "id": "verlichting",
+    "name": "Verlichting",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Verlichting"
+  },
+  {
+    "id": "wonen-accessoires",
+    "name": "Wonen & Accessoires",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Wonen & Accessoires"
+  },
+  {
+    "id": "keuken",
+    "name": "Keuken",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Keuken"
+  },
+  {
+    "id": "badkamer",
+    "name": "Badkamer",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Badkamer"
+  },
+  {
+    "id": "gordijnen",
+    "name": "Gordijnen en Raamdecoratie",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Gordijnen en Raamdecoratie"
+  },
+  {
+    "id": "vloerkleden",
+    "name": "Vloerkleden",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Vloerkleden"
+  },
+  {
+    "id": "kussens",
+    "name": "Kussens en Kussenovertrekken",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Kussens en Kussenovertrekken"
+  },
+  {
+    "id": "spiegels",
+    "name": "Spiegels",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Spiegels"
+  },
+  {
+    "id": "klokken",
+    "name": "Klokken",
+    "level": 2,
+    "parentId": "huis-inrichting",
+    "path": "Huis en Inrichting > Klokken"
+  },
+  {
+    "id": "isolatie",
+    "name": "Isolatie en Afdichting",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting"
+  },
+  {
+    "id": "platen-panelen",
+    "name": "Platen en Panelen",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Platen en Panelen"
+  },
+  {
+    "id": "bouwmaterialen",
+    "name": "Bouwmaterialen",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Bouwmaterialen"
+  },
+  {
+    "id": "gereedschap",
+    "name": "Gereedschap",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Gereedschap"
+  },
+  {
+    "id": "verf",
+    "name": "Verf en Behang",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Verf en Behang"
+  },
+  {
+    "id": "sanitair",
+    "name": "Sanitair",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Sanitair"
+  },
+  {
+    "id": "elektra",
+    "name": "Elektra",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Elektra"
+  },
+  {
+    "id": "vloeren",
+    "name": "Vloeren",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Vloeren"
+  },
+  {
+    "id": "ramen-deuren",
+    "name": "Ramen en Deuren",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Ramen en Deuren"
+  },
+  {
+    "id": "tegels",
+    "name": "Tegels",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Tegels"
+  },
+  {
+    "id": "hout",
+    "name": "Hout",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Hout"
+  },
+  {
+    "id": "metaal",
+    "name": "Metaal",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Metaal"
+  },
+  {
+    "id": "beton",
+    "name": "Beton en Cement",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Beton en Cement"
+  },
+  {
+    "id": "dakbedekking",
+    "name": "Dakbedekking",
+    "level": 2,
+    "parentId": "doe-het-zelf",
+    "path": "Doe-het-zelf en Verbouw > Dakbedekking"
+  },
+  {
+    "id": "isolatie-materiaal",
+    "name": "Isolatiemateriaal",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Isolatiemateriaal"
+  },
+  {
+    "id": "dakisolatie",
+    "name": "Dakisolatie",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Dakisolatie"
+  },
+  {
+    "id": "muurisolatie",
+    "name": "Muurisolatie",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Muurisolatie"
+  },
+  {
+    "id": "vloerisolatie",
+    "name": "Vloerisolatie",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Vloerisolatie"
+  },
+  {
+    "id": "afdichtingsmaterialen",
+    "name": "Afdichtingsmaterialen",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Afdichtingsmaterialen"
+  },
+  {
+    "id": "isolatieplaten",
+    "name": "Isolatieplaten",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Isolatieplaten"
+  },
+  {
+    "id": "glaswol",
+    "name": "Glaswol",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Glaswol"
+  },
+  {
+    "id": "steenvool",
+    "name": "Steenwol",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Steenwol"
+  },
+  {
+    "id": "hardschuim",
+    "name": "Hardschuim (PIR)",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Hardschuim (PIR)"
+  },
+  {
+    "id": "piepschuim",
+    "name": "Piepschuim (EPS)",
+    "level": 3,
+    "parentId": "isolatie",
+    "path": "Doe-het-zelf en Verbouw > Isolatie en Afdichting > Piepschuim (EPS)"
+  },
+  {
+    "id": "antiek-eetgerei",
+    "name": "Eetgerei",
+    "level": 2,
+    "parentId": "antiek",
+    "path": "Antiek en Kunst > Eetgerei"
+  },
+  {
+    "id": "antiek-meubels",
+    "name": "Meubels",
+    "level": 2,
+    "parentId": "antiek",
+    "path": "Antiek en Kunst > Meubels"
+  },
+  {
+    "id": "kunst",
+    "name": "Kunst",
+    "level": 2,
+    "parentId": "antiek",
+    "path": "Antiek en Kunst > Kunst"
+  },
+  {
+    "id": "antiek-overig",
+    "name": "Antiek Overig",
+    "level": 2,
+    "parentId": "antiek",
+    "path": "Antiek en Kunst > Antiek Overig"
+  },
+  {
+    "id": "bestek",
+    "name": "Bestek",
+    "level": 3,
+    "parentId": "antiek-eetgerei",
+    "path": "Antiek en Kunst > Eetgerei > Bestek"
+  },
+  {
+    "id": "servies",
+    "name": "Servies",
+    "level": 3,
+    "parentId": "antiek-eetgerei",
+    "path": "Antiek en Kunst > Eetgerei > Servies"
+  },
+  {
+    "id": "glaswerk",
+    "name": "Glaswerk",
+    "level": 3,
+    "parentId": "antiek-eetgerei",
+    "path": "Antiek en Kunst > Eetgerei > Glaswerk"
+  },
+  {
+    "id": "tv",
+    "name": "TV's",
+    "level": 2,
+    "parentId": "elektronica",
+    "path": "Elektronica > TV's"
+  },
+  {
+    "id": "audio",
+    "name": "Audio",
+    "level": 2,
+    "parentId": "elektronica",
+    "path": "Elektronica > Audio"
+  },
+  {
+    "id": "huishoudelijk",
+    "name": "Huishoudelijke Apparaten",
+    "level": 2,
+    "parentId": "elektronica",
+    "path": "Elektronica > Huishoudelijke Apparaten"
+  },
+  {
+    "id": "klimaat",
+    "name": "Klimaatbeheersing",
+    "level": 2,
+    "parentId": "elektronica",
+    "path": "Elektronica > Klimaatbeheersing"
+  },
+  {
+    "id": "fietsen",
+    "name": "Fietsen",
+    "level": 2,
+    "parentId": "sport",
+    "path": "Sport & Outdoor > Fietsen"
+  },
+  {
+    "id": "fitness",
+    "name": "Fitness",
+    "level": 2,
+    "parentId": "sport",
+    "path": "Sport & Outdoor > Fitness"
+  },
+  {
+    "id": "wintersport",
+    "name": "Wintersport",
+    "level": 2,
+    "parentId": "sport",
+    "path": "Sport & Outdoor > Wintersport"
+  },
+  {
+    "id": "watersport",
+    "name": "Watersport",
+    "level": 2,
+    "parentId": "sport",
+    "path": "Sport & Outdoor > Watersport"
+  },
+  {
+    "id": "voetbal",
+    "name": "Voetbal",
+    "level": 2,
+    "parentId": "sport",
+    "path": "Sport & Outdoor > Voetbal"
+  },
+  {
+    "id": "tennis",
+    "name": "Tennis",
+    "level": 2,
+    "parentId": "sport",
+    "path": "Sport & Outdoor > Tennis"
+  },
+  {
+    "id": "tuinmeubelen",
+    "name": "Tuinmeubelen",
+    "level": 2,
+    "parentId": "tuin",
+    "path": "Tuin & Terras > Tuinmeubelen"
+  },
+  {
+    "id": "tuingereedschap",
+    "name": "Tuingereedschap",
+    "level": 2,
+    "parentId": "tuin",
+    "path": "Tuin & Terras > Tuingereedschap"
+  },
+  {
+    "id": "planten",
+    "name": "Planten",
+    "level": 2,
+    "parentId": "tuin",
+    "path": "Tuin & Terras > Planten"
+  },
+  {
+    "id": "tuinverlichting",
+    "name": "Tuinverlichting",
+    "level": 2,
+    "parentId": "tuin",
+    "path": "Tuin & Terras > Tuinverlichting"
+  }
+]

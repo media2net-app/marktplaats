@@ -24,8 +24,19 @@ export default function ProductsClient({ products: initialProducts }: ProductsCl
   const [showForm, setShowForm] = useState(false)
   const [resetting, setResetting] = useState(false)
 
-  const handleProductAdded = (product: Product) => {
-    setProducts([product, ...products])
+  const handleProductAdded = (newProduct: any) => {
+    // Convert the new product to match our Product interface
+    const fullProduct: Product = {
+      id: newProduct.id,
+      title: newProduct.title,
+      description: newProduct.description,
+      price: newProduct.price,
+      articleNumber: newProduct.articleNumber,
+      status: newProduct.status || 'pending',
+      marktplaatsUrl: newProduct.marktplaatsUrl || null,
+      createdAt: newProduct.createdAt || new Date(),
+    }
+    setProducts([fullProduct, ...products])
     setShowForm(false) // Klap formulier in na succesvol toevoegen
   }
 

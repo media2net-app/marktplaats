@@ -28,8 +28,23 @@ export default function DashboardClient({ products: initialProducts }: Dashboard
   const [products, setProducts] = useState(initialProducts)
   const [showForm, setShowForm] = useState(false)
 
-  const handleProductAdded = (newProduct: Product) => {
-    setProducts([newProduct, ...products])
+  const handleProductAdded = (newProduct: any) => {
+    // Convert the new product to match our Product interface
+    const fullProduct: Product = {
+      id: newProduct.id,
+      title: newProduct.title,
+      description: newProduct.description,
+      price: newProduct.price,
+      articleNumber: newProduct.articleNumber,
+      status: newProduct.status || 'pending',
+      marktplaatsUrl: newProduct.marktplaatsUrl || null,
+      marktplaatsAdId: newProduct.marktplaatsAdId || null,
+      views: newProduct.views || 0,
+      saves: newProduct.saves || 0,
+      postedAt: newProduct.postedAt || null,
+      createdAt: newProduct.createdAt || new Date(),
+    }
+    setProducts([fullProduct, ...products])
     setShowForm(false)
   }
 

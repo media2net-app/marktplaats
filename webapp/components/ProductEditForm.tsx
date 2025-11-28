@@ -10,6 +10,7 @@ interface Product {
   description: string
   price: number
   articleNumber: string
+  status: string
   condition: string | null
   material: string | null
   thickness: string | null

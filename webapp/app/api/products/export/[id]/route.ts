@@ -36,6 +36,10 @@ export async function GET(
       },
     })
 
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found' }, { status: 404 })
+    }
+
     // If using API key, skip user check (internal use only)
     // If using session, verify ownership
     if (session && session.user && product.userId !== session.user.id) {

@@ -7,7 +7,7 @@ import ProductsClient from '@/components/ProductsClient'
 export default async function ProductsPage() {
   const session = await getServerSession()
 
-  if (!session) {
+  if (!session || !session.user) {
     redirect('/login')
   }
 
@@ -17,7 +17,7 @@ export default async function ProductsPage() {
   })
 
   return (
-    <SidebarLayout user={session.user}>
+    <SidebarLayout user={{ email: session.user.email || '', name: session.user.name }}>
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">

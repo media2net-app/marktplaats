@@ -7,7 +7,7 @@ import SidebarLayout from '@/components/SidebarLayout'
 export default async function DashboardPage() {
   const session = await getServerSession()
   
-  if (!session) {
+  if (!session || !session.user) {
     redirect('/login')
   }
 
@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   })
 
   return (
-    <SidebarLayout user={session.user}>
+    <SidebarLayout user={{ email: session.user.email || '', name: session.user.name }}>
       <DashboardClient products={products} />
     </SidebarLayout>
   )

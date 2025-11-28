@@ -12,7 +12,7 @@ export default async function EditProductPage({
   const resolvedParams = await params
   const session = await getServerSession()
 
-  if (!session) {
+  if (!session || !session.user) {
     redirect('/login')
   }
 
@@ -28,7 +28,7 @@ export default async function EditProductPage({
   }
 
   return (
-    <SidebarLayout user={session.user}>
+    <SidebarLayout user={{ email: session.user.email || '', name: session.user.name }}>
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">

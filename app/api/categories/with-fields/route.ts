@@ -3,13 +3,9 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET() {
   try {
-    // Haal eerst alleen categorieën op die fields hebben (selecteer alleen benodigde velden)
+    // Haal alle categorieën op (selecteer alleen benodigde velden)
+    // We filteren later op niet-null en niet-lege fields
     const categoriesWithFields = await prisma.category.findMany({
-      where: {
-        fields: {
-          not: null,
-        },
-      },
       select: {
         id: true,
         name: true,

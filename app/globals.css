@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: #f9fafb;
+}
+
+/* Ensure all form elements have visible black text and better styling */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="tel"],
+input[type="url"],
+textarea,
+select {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+  padding: 0.75rem 1rem !important;
+  border: 2px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+input[type="email"]::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+textarea:focus,
+select:focus {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+}
+
+input[type="text"]:not(:placeholder-shown),
+input[type="number"]:not(:placeholder-shown),
+input[type="email"]:not(:placeholder-shown),
+textarea:not(:placeholder-shown) {
+  color: #111827 !important;
+}
+
+select option {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+}
+
+/* Ensure contenteditable elements also have black text */
+[contenteditable="true"] {
+  color: #111827 !important;
+}
+
+/* Override any Tailwind text color classes on inputs */
+input.text-white,
+textarea.text-white,
+select.text-white {
+  color: #111827 !important;
+}
+

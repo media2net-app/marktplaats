@@ -12,7 +12,25 @@ interface Product {
   articleNumber: string
   status: string
   marktplaatsUrl?: string | null
-  createdAt: Date
+  marktplaatsAdId?: string | null
+  views?: number
+  saves?: number
+  postedAt?: string | Date | null
+  deliveryOption?: string | null
+  condition?: string | null
+  material?: string | null
+  thickness?: string | null
+  totalSurface?: string | null
+  location?: string | null
+  platforms?: string[]
+  categoryId?: string | null
+  category?: {
+    id: string
+    name: string
+    path: string
+  } | null
+  categoryFields?: Record<string, any> | null
+  createdAt: Date | string
 }
 
 interface ProductsClientProps {
@@ -34,6 +52,10 @@ export default function ProductsClient({ products: initialProducts }: ProductsCl
       articleNumber: newProduct.articleNumber,
       status: newProduct.status || 'pending',
       marktplaatsUrl: newProduct.marktplaatsUrl || null,
+      marktplaatsAdId: newProduct.marktplaatsAdId || null,
+      views: newProduct.views ?? 0,
+      saves: newProduct.saves ?? 0,
+      postedAt: newProduct.postedAt || null,
       createdAt: newProduct.createdAt || new Date(),
     }
     setProducts([fullProduct, ...products])

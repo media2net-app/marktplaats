@@ -18,6 +18,9 @@ interface Product {
   deliveryOption: string | null
   location: string | null
   categoryId: string | null
+  categoryFields?: Record<string, any> | null
+  ebayFields?: Record<string, any> | null
+  platforms?: string[]
   category?: {
     id: string
     name: string
@@ -40,35 +43,8 @@ export default function ProductEditForm({ product }: ProductEditFormProps) {
   }, [product])
 
   const handleUpdate = async (updatedProduct: any) => {
-    try {
-      const response = await fetch(`/api/products/${product.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: updatedProduct.title,
-          description: updatedProduct.description,
-          price: updatedProduct.price,
-          articleNumber: updatedProduct.articleNumber,
-          condition: updatedProduct.condition || null,
-          material: updatedProduct.material || null,
-          thickness: updatedProduct.thickness || null,
-          totalSurface: updatedProduct.totalSurface || null,
-          deliveryOption: updatedProduct.deliveryOption || null,
-          location: updatedProduct.location || null,
-          categoryId: updatedProduct.categoryId || null,
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Fout bij bijwerken')
-      }
-
-      // Redirect to products page
-      router.push('/products')
-      router.refresh()
-    } catch (error) {
-      alert('Er is een fout opgetreden bij het bijwerken')
-    }
+    // ProductForm handles the update and navigation itself now
+    // This callback is kept for compatibility but doesn't need to do anything
   }
 
   if (loading || !productData) {

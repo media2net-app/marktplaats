@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       try {
         // Upload file (to cloud storage on Vercel, local filesystem locally)
         const result = await uploadFile(file, articleNumber, filename)
-        uploadedFiles.push(result.path.replace('/media/', '')) // Remove /media/ prefix for compatibility
+        uploadedFiles.push(result.path)
       } catch (error: any) {
         console.error('Error uploading file:', error)
         // Continue with other files even if one fails

@@ -56,24 +56,42 @@ export async function PUT(
     
     // Don't allow updating status, marktplaatsUrl, marktplaatsAdId, views, saves, postedAt via this endpoint
     // These are managed by the posting process
+    
+    // Build update data object, only including fields that are provided
+    const updateData: any = {
+      title: body.title,
+      description: body.description,
+      price: body.price,
+      articleNumber: body.articleNumber,
+      condition: body.condition,
+      deliveryOption: body.deliveryOption,
+      location: body.location,
+      categoryId: body.categoryId !== undefined ? (body.categoryId || null) : undefined,
+      platforms: body.platforms || ['marktplaats'],
+    }
+    
+    // Handle categoryFields - only update if explicitly provided
+    if (body.categoryFields !== undefined) {
+      // If it's an empty object, set to null, otherwise use the provided value
+      if (body.categoryFields && typeof body.categoryFields === 'object' && Object.keys(body.categoryFields).length > 0) {
+        updateData.categoryFields = body.categoryFields
+      } else {
+        updateData.categoryFields = null
+      }
+    }
+    
+    // Handle ebayFields - only update if explicitly provided
+    if (body.ebayFields !== undefined) {
+      if (body.ebayFields && typeof body.ebayFields === 'object' && Object.keys(body.ebayFields).length > 0) {
+        updateData.ebayFields = body.ebayFields
+      } else {
+        updateData.ebayFields = null
+      }
+    }
+    
     const updatedProduct = await prisma.product.update({
       where: { id: params.id },
-      data: {
-        title: body.title,
-        description: body.description,
-        price: body.price,
-        articleNumber: body.articleNumber,
-        condition: body.condition,
-        material: body.material,
-        thickness: body.thickness,
-        totalSurface: body.totalSurface,
-        deliveryOption: body.deliveryOption,
-        location: body.location,
-        categoryId: body.categoryId || null,
-        categoryFields: body.categoryFields || null,
-        ebayFields: body.ebayFields !== undefined ? body.ebayFields : null,
-        platforms: body.platforms || ['marktplaats'],
-      },
+      data: updateData,
       include: {
         category: true,
       },

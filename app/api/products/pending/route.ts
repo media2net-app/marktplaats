@@ -22,8 +22,8 @@ export async function GET(request: NextRequest) {
       // Session check failed, try API key
     }
     
-    // Validate API key if no session
-    const isApiKeyValid = apiKey && (apiKey === validApiKey)
+    // Validate API key if no session (trim whitespace for comparison)
+    const isApiKeyValid = apiKey && (apiKey.trim() === validApiKey.trim())
     
     if (!session_user && !isApiKeyValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -63,6 +63,9 @@ export async function GET(request: NextRequest) {
       || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
       || 'http://localhost:3000'
     
+    // Use the valid API key for photo_api_url (not the one from request, which might be different)
+    const photoApiKey = validApiKey
+    
     const exportData = products.map(product => {
       // Get photo URLs from API
       const photoUrls: string[] = []
@@ -85,15 +88,13 @@ export async function GET(request: NextRequest) {
         price: product.price.toString(),
         location: product.location || '',
         photos: photoUrls, // Will be populated by script via API
-        photo_api_url: `${baseUrl}/api/products/${product.id}/images?api_key=${apiKey}`, // API endpoint to get photo URLs
+        photo_api_url: `${baseUrl}/api/products/${product.id}/images?api_key=${photoApiKey}`, // API endpoint to get photo URLs
         article_number: product.articleNumber,
         condition: product.condition || 'Gebruikt',
         delivery_methods: [],
-        material: product.material || '',
-        thickness: product.thickness || '',
-        total_surface: product.totalSurface || '',
         delivery_option: product.deliveryOption || 'Ophalen of Verzenden',
         category_path: categoryPath, // Use the category that was set for the product
+        category_fields: product.categoryFields || {}, // Include category-specific fields
       }
     })
 

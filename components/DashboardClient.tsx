@@ -58,15 +58,15 @@ export default function DashboardClient({ products: initialProducts }: Dashboard
   }
 
   return (
-    <div className="space-y-8">
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-gray-600 mt-1">Overzicht van je producten en advertentie statistieken</p>
+    <div className="space-y-6 sm:space-y-8">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h2>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Overzicht van je producten en advertentie statistieken</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold shadow-md hover:from-indigo-700 hover:to-purple-700 transition-all"
+          className="w-full sm:w-auto bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold shadow-md hover:from-indigo-700 hover:to-purple-700 transition-all text-sm sm:text-base"
         >
           {showForm ? 'Annuleren' : '+ Nieuw Product'}
         </button>
@@ -83,7 +83,7 @@ export default function DashboardClient({ products: initialProducts }: Dashboard
 
       {/* Product Lijst */}
       <div>
-        <h3 className="text-xl font-bold text-gray-900 mb-4">Alle Producten</h3>
+        <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">Alle Producten</h3>
         <ProductList products={products} />
       </div>
     </div>

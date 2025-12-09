@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Product {
   id: string
@@ -49,8 +50,10 @@ interface CategoryField {
 }
 
 export default function ProductForm({ product, onSuccess, mode = 'create' }: ProductFormProps) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [uploadingPhotos, setUploadingPhotos] = useState(false)
+  const [showLoadingModal, setShowLoadingModal] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory1, setSelectedCategory1] = useState('')
   const [selectedCategory2, setSelectedCategory2] = useState('')
@@ -70,9 +73,6 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
     price: product?.price?.toString() || '',
     articleNumber: product?.articleNumber || '',
     condition: product?.condition || 'Gebruikt',
-    material: product?.material || '',
-    thickness: product?.thickness || '',
-    totalSurface: product?.totalSurface || '',
     deliveryOption: product?.deliveryOption || 'Ophalen of Verzenden',
     location: product?.location || '',
     categoryId: product?.categoryId || '',
@@ -348,7 +348,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
             max={field.max}
             step={field.step}
             maxLength={field.maxLength}
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400 text-base"
           />
         )
       
@@ -364,7 +364,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
             required={field.required}
             maxLength={field.maxLength}
             rows={4}
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all resize-none placeholder:text-gray-400"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all resize-none placeholder:text-gray-400 text-base"
           />
         )
       
@@ -377,7 +377,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
             value={value}
             onChange={(e) => onChange(field.name, e.target.value)}
             required={field.required}
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all cursor-pointer"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all cursor-pointer text-base"
           >
             <option value="">Selecteer...</option>
             {field.options?.map(option => (
@@ -394,7 +394,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         const radioGroup = fieldsToSearch.filter(f => f.name === field.name && f.type === 'radio')
         if (radioGroup[0] === field) {
           return (
-            <div key={`radio-group-${field.name}`} className="flex flex-wrap gap-4">
+            <div key={`radio-group-${field.name}`} className="flex flex-wrap gap-3 sm:gap-4">
               {radioGroup.map((radioField, idx) => (
                 <label
                   key={`${fieldId}-${idx}`}
@@ -409,7 +409,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
                     required={field.required}
                     className="w-4 h-4 text-indigo-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-200"
                   />
-                  <span className="text-gray-700">{radioField.label}</span>
+                  <span className="text-sm sm:text-base text-gray-700">{radioField.label}</span>
                 </label>
               ))}
             </div>
@@ -424,7 +424,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         if (checkboxGroup[0] === field) {
           const checkboxValues = Array.isArray(value) ? value : []
           return (
-            <div key={`checkbox-group-${field.name}`} className="flex flex-wrap gap-4">
+            <div key={`checkbox-group-${field.name}`} className="flex flex-wrap gap-3 sm:gap-4">
               {checkboxGroup.map((checkboxField, idx) => (
                 <label
                   key={`${fieldId}-${idx}`}
@@ -443,7 +443,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
                     }}
                     className="w-4 h-4 text-indigo-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-200"
                   />
-                  <span className="text-gray-700">{checkboxField.label}</span>
+                  <span className="text-sm sm:text-base text-gray-700">{checkboxField.label}</span>
                 </label>
               ))}
             </div>
@@ -459,6 +459,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setShowLoadingModal(true)
 
     try {
       // Upload photos if any (for new products or when editing with new photos)
@@ -514,13 +515,38 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         : '/api/products'
       const method = mode === 'edit' ? 'PUT' : 'POST'
       
+      // Prepare categoryFields - only include fields with actual values
+      const cleanCategoryFields: Record<string, any> = {}
+      Object.keys(categoryFieldValues).forEach(key => {
+        const value = categoryFieldValues[key]
+        // Only include if value is not empty/null/undefined
+        if (value !== null && value !== undefined && value !== '') {
+          // For arrays, check if they have items
+          if (Array.isArray(value)) {
+            if (value.length > 0) {
+              cleanCategoryFields[key] = value
+            }
+          } else {
+            cleanCategoryFields[key] = value
+          }
+        }
+      })
+      
       // Prepare eBay field values (remove 'ebay_' prefix)
       const cleanEbayFields: Record<string, any> = {}
       Object.keys(ebayFieldValues).forEach(key => {
-        if (key.startsWith('ebay_')) {
-          cleanEbayFields[key.replace('ebay_', '')] = ebayFieldValues[key]
-        } else {
-          cleanEbayFields[key] = ebayFieldValues[key]
+        const value = ebayFieldValues[key]
+        const cleanKey = key.startsWith('ebay_') ? key.replace('ebay_', '') : key
+        
+        // Only include if value is not empty/null/undefined
+        if (value !== null && value !== undefined && value !== '') {
+          if (Array.isArray(value)) {
+            if (value.length > 0) {
+              cleanEbayFields[cleanKey] = value
+            }
+          } else {
+            cleanEbayFields[cleanKey] = value
+          }
         }
       })
       
@@ -530,7 +556,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         body: JSON.stringify({
           ...formData,
           price: parseFloat(formData.price),
-          categoryFields: categoryFieldValues,
+          categoryFields: Object.keys(cleanCategoryFields).length > 0 ? cleanCategoryFields : null,
           ebayFields: Object.keys(cleanEbayFields).length > 0 ? cleanEbayFields : null,
           platforms: selectedPlatforms,
         }),
@@ -551,9 +577,6 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
           price: '',
           articleNumber: '',
           condition: 'Gebruikt',
-          material: '',
-          thickness: '',
-          totalSurface: '',
           deliveryOption: 'Ophalen of Verzenden',
           location: '',
           categoryId: '',
@@ -570,7 +593,13 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         previewUrls.forEach(url => URL.revokeObjectURL(url))
         setPreviewUrls([])
       }
+      
+      // Close modal and navigate to products page
+      setShowLoadingModal(false)
+      router.push('/products')
+      router.refresh()
     } catch (error) {
+      setShowLoadingModal(false)
       alert('Er is een fout opgetreden')
     } finally {
       setLoading(false)
@@ -582,15 +611,35 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
   const selectedCategoryId = selectedCategory3 || selectedCategory2 || selectedCategory1
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+    <>
+      {/* Loading Modal */}
+      {showLoadingModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl p-6 sm:p-8 max-w-md w-full">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-4 border-indigo-600 mb-4"></div>
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 text-center">
+                {uploadingPhotos ? 'Foto\'s uploaden...' : 'Product opslaan...'}
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600 text-center">
+                {uploadingPhotos 
+                  ? 'Even geduld terwijl we je foto\'s uploaden...'
+                  : 'Je product wordt opgeslagen, even geduld...'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2">
         {/* Stap 1: Basis informatie */}
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Titel</label>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">Titel</label>
           <input
             type="text"
             required
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400 text-base"
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="Voer producttitel in"
@@ -598,11 +647,11 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Artikelnummer</label>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">Artikelnummer</label>
           <input
             type="text"
             required
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400 text-base"
             value={formData.articleNumber}
             onChange={(e) => setFormData({ ...formData, articleNumber: e.target.value })}
             placeholder="Bijv. ART-001"
@@ -610,8 +659,8 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-3">Platforms</label>
-          <div className="flex gap-4 mb-4">
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2 sm:mb-3">Platforms</label>
+          <div className="flex gap-3 sm:gap-4 mb-3 sm:mb-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -619,7 +668,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
                 onChange={() => handlePlatformToggle('marktplaats')}
                 className="w-5 h-5 text-indigo-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-200"
               />
-              <span className="text-gray-700 font-medium">Marktplaats</span>
+              <span className="text-sm sm:text-base text-gray-700 font-medium">Marktplaats</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -628,16 +677,16 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
                 onChange={() => handlePlatformToggle('ebay')}
                 className="w-5 h-5 text-indigo-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-indigo-200"
               />
-              <span className="text-gray-700 font-medium">eBay</span>
+              <span className="text-sm sm:text-base text-gray-700 font-medium">eBay</span>
             </label>
           </div>
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-3">Categorie</label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2 sm:mb-3">Categorie</label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2.5 uppercase tracking-wide">Hoofdcategorie</label>
+              <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">Hoofdcategorie</label>
               <select
                 className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all cursor-pointer"
                 value={selectedCategory1}
@@ -653,7 +702,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
 
             {selectedCategory1 && level2Categories.length > 0 && (
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2.5 uppercase tracking-wide">Subcategorie</label>
+                <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">Subcategorie</label>
                 <select
                   className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all cursor-pointer"
                   value={selectedCategory2}
@@ -670,7 +719,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
 
             {selectedCategory2 && level3Categories.length > 0 && (
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2.5 uppercase tracking-wide">Sub-subcategorie</label>
+                <label className="block text-xs sm:text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">Sub-subcategorie</label>
                 <select
                   className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all cursor-pointer"
                   value={selectedCategory3}
@@ -693,7 +742,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
             {/* Marktplaats velden */}
             {selectedPlatforms.includes('marktplaats') && categoryFields.length > 0 && (
               <div className="sm:col-span-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             {categoryFields.map((field, index) => {
                 // Skip duplicate radio/checkbox fields (they're rendered in groups)
                 if (field.type === 'radio' || field.type === 'checkbox') {
@@ -703,7 +752,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
                 
                 return (
                   <div key={`marktplaats-${field.name}-${index}`} className={field.type === 'radio' || field.type === 'checkbox' || field.type === 'textarea' ? 'sm:col-span-2' : ''}>
-                        <label htmlFor={`category-field-${field.name}`} className="block text-sm font-semibold text-gray-700 mb-2.5">
+                        <label htmlFor={`category-field-${field.name}`} className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
                           {field.label}
                           {field.required && <span className="text-red-500 ml-1">*</span>}
                         </label>
@@ -718,7 +767,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
             {/* eBay velden */}
             {selectedPlatforms.includes('ebay') && ebayFields.length > 0 && (
               <div className="sm:col-span-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   {ebayFields.map((field, index) => {
                     const value = ebayFieldValues[field.name] || ''
                     const fieldId = `ebay-field-${field.name}`
@@ -731,7 +780,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
                     
                     return (
                       <div key={`ebay-${field.name}-${index}`} className={field.type === 'radio' || field.type === 'checkbox' || field.type === 'textarea' ? 'sm:col-span-2' : ''}>
-                        <label htmlFor={fieldId} className="block text-sm font-semibold text-gray-700 mb-2.5">
+                        <label htmlFor={fieldId} className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
                           {field.label}
                           {field.required && <span className="text-red-500 ml-1">*</span>}
                         </label>
@@ -749,11 +798,11 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         {selectedCategoryId && (
           <>
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Beschrijving</label>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">Beschrijving</label>
           <textarea
             required
             rows={4}
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all resize-none placeholder:text-gray-400"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all resize-none placeholder:text-gray-400 text-base"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Beschrijf je product..."
@@ -761,12 +810,12 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Prijs (€)</label>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">Prijs (€)</label>
           <input
             type="number"
             step="0.01"
             required
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400 text-base"
             value={formData.price}
             onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             placeholder="0.00"
@@ -774,9 +823,9 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Staat</label>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">Staat</label>
           <select
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all cursor-pointer"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all cursor-pointer text-base"
             value={formData.condition}
             onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
           >
@@ -787,10 +836,10 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Locatie</label>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">Locatie</label>
           <input
             type="text"
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400 text-base"
             value={formData.location}
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
             placeholder="Bijv. Amsterdam"
@@ -798,18 +847,19 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         </div>
 
         <div className="sm:col-span-2">
-          <label className="block text-sm font-semibold text-gray-700 mb-2">Foto's</label>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">Foto's</label>
           <div className="mt-1">
             <div className="flex items-center justify-center w-full">
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
-                <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                  <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <label className="flex flex-col items-center justify-center w-full h-28 sm:h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 active:bg-gray-200 transition-colors touch-manipulation">
+                <div className="flex flex-col items-center justify-center pt-4 sm:pt-5 pb-4 sm:pb-6 px-4">
+                  <svg className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
-                  <p className="mb-2 text-sm text-gray-500">
-                    <span className="font-semibold">Klik om te uploaden</span> of sleep bestanden hierheen
+                  <p className="mb-1 sm:mb-2 text-xs sm:text-sm text-gray-500 text-center">
+                    <span className="font-semibold">Klik om te uploaden</span>
+                    <span className="hidden sm:inline"> of sleep bestanden hierheen</span>
                   </p>
-                  <p className="text-xs text-gray-500">JPG, PNG, HEIC (MAX. 10MB per bestand)</p>
+                  <p className="text-xs text-gray-500 text-center">JPG, PNG, HEIC (MAX. 10MB)</p>
                 </div>
                 <input
                   type="file"
@@ -834,7 +884,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
           {existingImages.length > 0 && (
             <div className="mt-4">
               <p className="text-sm font-medium text-gray-700 mb-2">Bestaande foto's:</p>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                 {existingImages.map((imagePath, index) => (
                   <div key={`existing-${index}`} className="relative group">
                     <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm hover:border-indigo-300 transition-colors">
@@ -867,7 +917,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
               {existingImages.length > 0 && (
                 <p className="text-sm font-medium text-gray-700 mb-2">Nieuwe foto's:</p>
               )}
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                 {previewUrls.map((url, index) => (
                   <div key={`preview-${index}`} className="relative group">
                     <div className="aspect-square rounded-lg overflow-hidden border-2 border-gray-200 shadow-sm hover:border-indigo-300 transition-colors">
@@ -891,11 +941,11 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
           )}
           
           {!formData.articleNumber && selectedFiles.length > 0 && (
-            <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="mt-3 flex items-start gap-2 p-3 sm:p-4 bg-amber-50 border border-amber-200 rounded-lg">
               <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <p className="text-sm text-amber-800">
+              <p className="text-xs sm:text-sm text-amber-800">
                 Voer eerst een artikelnummer in voordat je foto's uploadt
               </p>
             </div>
@@ -905,11 +955,11 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         )}
       </div>
 
-      <div className="mt-8 pt-6 border-t border-gray-200">
+      <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
         <button
           type="submit"
           disabled={loading || uploadingPhotos || (selectedFiles.length > 0 && !formData.articleNumber)}
-          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-6 rounded-lg font-semibold shadow-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3.5 sm:py-3 px-6 rounded-lg font-semibold shadow-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-base sm:text-lg touch-manipulation"
         >
           {uploadingPhotos ? (
             <>
@@ -938,6 +988,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         </button>
       </div>
     </form>
+    </>
   )
 }
 

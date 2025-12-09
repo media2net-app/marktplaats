@@ -14,7 +14,22 @@ export default async function ProductsPage() {
   const products = await prisma.product.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
+    include: {
+      category: true,
+    },
   })
+
+  // Serialize dates and JSON fields for client components
+  const serializedProducts = products.map((p) => ({
+    ...p,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+    postedAt: p.postedAt ? p.postedAt.toISOString() : null,
+    ebayPostedAt: p.ebayPostedAt ? p.ebayPostedAt.toISOString() : null,
+    // Ensure categoryFields and ebayFields are properly serialized (Prisma already parses JSON, but ensure they're objects)
+    categoryFields: p.categoryFields ? (typeof p.categoryFields === 'object' ? p.categoryFields : JSON.parse(p.categoryFields as any)) : null,
+    ebayFields: p.ebayFields ? (typeof p.ebayFields === 'object' ? p.ebayFields : JSON.parse(p.ebayFields as any)) : null,
+  }))
 
   return (
     <SidebarLayout user={{ email: session.user.email || '', name: session.user.name }}>
@@ -33,7 +48,7 @@ export default async function ProductsPage() {
           </div>
         </div>
       </div>
-      <ProductsClient products={products} />
+      <ProductsClient products={serializedProducts} />
     </SidebarLayout>
   )
 }

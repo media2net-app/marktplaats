@@ -35,19 +35,29 @@ if not exist "scripts\post_marktplaats_standalone.py" (
     exit /b 1
 )
 
-REM Run the standalone script
-python scripts\post_marktplaats_standalone.py
+REM Run the standalone script with logging
+set "LOGDIR=%SCRIPT_DIR%logs"
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
+set "LOGFILE=%LOGDIR%\standalone_%DATE:~-4%%DATE:~3,2%%DATE:~0,2%_%TIME:~0,2%%TIME:~3,2%%TIME:~6,2%.log"
+
+echo Logging naar: %LOGFILE%
+echo.
+
+REM Use PowerShell to capture stdout+stderr with live console + log
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$host.UI.RawUI.WindowTitle = 'Marktplaats Standalone Runner';" ^
+  "; python -u scripts\\post_marktplaats_standalone.py 2>&1 | Tee-Object -FilePath '%LOGFILE%'"
 
 if errorlevel 1 (
     echo.
-    echo [ERROR] Script is gestopt met een fout
+    echo [ERROR] Script is gestopt met een fout. Zie log: %LOGFILE%
     pause
     exit /b 1
 )
 
 echo.
 echo ========================================
-echo Klaar!
+echo Klaar! Log: %LOGFILE%
 echo ========================================
 pause
 

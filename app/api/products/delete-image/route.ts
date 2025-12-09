@@ -31,12 +31,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!finalArticleNumber || !finalFilename) {
+    // For blob URLs we don't need articleNumber/filename
+    const isBlobUrl = imagePath && imagePath.startsWith('http')
+
+    if (!isBlobUrl && (!finalArticleNumber || !finalFilename)) {
       return NextResponse.json({ error: 'Invalid path format' }, { status: 400 })
     }
 
     try {
-      await deleteFile(imagePath || `/media/${finalArticleNumber}/${finalFilename}`, finalArticleNumber)
+      await deleteFile(
+        imagePath || `/media/${finalArticleNumber}/${finalFilename}`,
+        finalArticleNumber
+      )
       return NextResponse.json({ success: true })
     } catch (error: any) {
       console.error('Error deleting file:', error)

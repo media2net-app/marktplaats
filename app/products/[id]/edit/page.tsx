@@ -27,6 +27,18 @@ export default async function EditProductPage({
     redirect('/products')
   }
 
+  // Serialize product for client component (ensure JSON fields are properly parsed)
+  const serializedProduct = {
+    ...product,
+    createdAt: product.createdAt.toISOString(),
+    updatedAt: product.updatedAt.toISOString(),
+    postedAt: product.postedAt ? product.postedAt.toISOString() : null,
+    ebayPostedAt: product.ebayPostedAt ? product.ebayPostedAt.toISOString() : null,
+    // Ensure categoryFields and ebayFields are properly serialized
+    categoryFields: product.categoryFields ? (typeof product.categoryFields === 'object' ? product.categoryFields : JSON.parse(product.categoryFields as any)) : null,
+    ebayFields: product.ebayFields ? (typeof product.ebayFields === 'object' ? product.ebayFields : JSON.parse(product.ebayFields as any)) : null,
+  }
+
   return (
     <SidebarLayout user={{ email: session.user.email || '', name: session.user.name }}>
       <div className="mb-8">
@@ -44,7 +56,7 @@ export default async function EditProductPage({
           </div>
         </div>
       </div>
-      <ProductEditForm product={product} />
+      <ProductEditForm product={serializedProduct as any} />
     </SidebarLayout>
   )
 }

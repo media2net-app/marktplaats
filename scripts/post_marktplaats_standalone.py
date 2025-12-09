@@ -59,14 +59,14 @@ async def download_product_images(product_id: str, article_number: str, temp_dir
                     f.write(img_response.content)
                 
                 downloaded_paths.append(filepath)
-                print(f"  ✅ Foto gedownload: {filename}")
+                print(f"  [OK] Foto gedownload: {filename}")
             except Exception as e:
-                print(f"  ⚠️  Fout bij downloaden foto {idx+1}: {e}")
+                print(f"  [WARNING] Fout bij downloaden foto {idx+1}: {e}")
                 continue
         
         return downloaded_paths
     except Exception as e:
-        print(f"  ❌ Fout bij ophalen foto's: {e}")
+        print(f"  [ERROR] Fout bij ophalen foto's: {e}")
         return []
 
 async def main():
@@ -91,10 +91,10 @@ async def main():
         pending_products = response.json()
         
         if not pending_products or len(pending_products) == 0:
-            print("✅ Geen pending producten gevonden.")
+            print("[OK] Geen pending producten gevonden.")
             return
         
-        print(f"✅ Gevonden {len(pending_products)} pending product(en)")
+        print(f"[OK] Gevonden {len(pending_products)} pending product(en)")
         print()
         
         # Download images for each product and update product data
@@ -104,9 +104,56 @@ async def main():
             
             if product_id and article_number:
                 print(f"Downloaden foto's voor: {product.get('title', 'Onbekend')}")
-                image_paths = await download_product_images(product_id, article_number, temp_dir)
-                # Update product with downloaded image paths
-                product['photos'] = image_paths
+                # Prefer API-provided photo_api_url (contains correct key/base)
+                photo_api_url = product.get('photo_api_url') or f"{API_BASE_URL}/api/products/{product_id}/images?api_key={API_KEY}"
+                
+                # Extract API key from photo_api_url if it contains one, otherwise use default
+                import urllib.parse
+                parsed_url = urllib.parse.urlparse(photo_api_url)
+                query_params = urllib.parse.parse_qs(parsed_url.query)
+                url_api_key = query_params.get('api_key', [None])[0]
+                # Use API key from URL if available, otherwise use the default
+                request_api_key = url_api_key or API_KEY
+                
+                # Fetch images
+                try:
+                    response = requests.get(photo_api_url, headers={'x-api-key': request_api_key}, timeout=30)
+                    response.raise_for_status()
+                    data = response.json()
+                    image_urls = data.get('images', [])
+                    downloaded_paths = []
+                    for idx, image_url in enumerate(image_urls):
+                        try:
+                            img_response = requests.get(image_url, timeout=30)
+                            img_response.raise_for_status()
+                            ext = '.jpg'
+                            if '.png' in image_url.lower():
+                                ext = '.png'
+                            elif '.jpeg' in image_url.lower() or '.jpg' in image_url.lower():
+                                ext = '.jpg'
+                            elif 'image/png' in img_response.headers.get('content-type', ''):
+                                ext = '.png'
+                            filename = f"{article_number}_{idx+1}{ext}"
+                            filepath = os.path.join(temp_dir, filename)
+                            with open(filepath, 'wb') as f:
+                                f.write(img_response.content)
+                            downloaded_paths.append(filepath)
+                            print(f"  [OK] Foto gedownload: {filename} ({len(img_response.content)} bytes)")
+                        except Exception as e:
+                            print(f"  [WARNING] Fout bij downloaden foto {idx+1}: {e}")
+                            continue
+                    
+                    if downloaded_paths:
+                        product['photos'] = downloaded_paths
+                        print(f"  [OK] Totaal {len(downloaded_paths)} foto(s) gedownload voor {article_number}")
+                    else:
+                        product['photos'] = []
+                        print(f"  [WARNING] Geen foto's gedownload voor {article_number}")
+                except Exception as e:
+                    print(f"  [ERROR] Fout bij ophalen foto's: {e}")
+                    import traceback
+                    print(f"  Traceback: {traceback.format_exc()}")
+                    product['photos'] = []
                 print()
         
         # Create a modified API response that includes the downloaded images
@@ -132,6 +179,16 @@ async def main():
             for item in pending_products:
                 photos = item.get('photos', []) or []
                 delivery_methods = item.get('delivery_methods', []) or []
+                category_fields = item.get('category_fields') or {}
+                
+                # Log photo information for debugging
+                if photos:
+                    print(f"[DEBUG] Product {item.get('title', 'Unknown')} heeft {len(photos)} foto(s):")
+                    for i, photo_path in enumerate(photos, 1):
+                        exists = os.path.exists(photo_path) if photo_path else False
+                        print(f"  Foto {i}: {photo_path} (exists: {exists})")
+                else:
+                    print(f"[DEBUG] Product {item.get('title', 'Unknown')} heeft geen foto's")
                 
                 product = post_ads.Product(
                     title=item.get('title', '').strip(),
@@ -143,14 +200,15 @@ async def main():
                     article_number=item.get('article_number') or None,
                     condition=item.get('condition') or 'Gebruikt',
                     delivery_methods=delivery_methods,
-                    material=item.get('material') or None,
-                    thickness=item.get('thickness') or None,
-                    total_surface=item.get('total_surface') or None,
+                    material=item.get('material') or None,  # Keep for backward compatibility
+                    thickness=item.get('thickness') or None,  # Keep for backward compatibility
+                    total_surface=item.get('total_surface') or None,  # Keep for backward compatibility
                     delivery_option=item.get('delivery_option') or 'Ophalen of Verzenden',
+                    category_fields=category_fields if isinstance(category_fields, dict) else {},
                 )
                 products_list.append(product)
             
-            print(f"✅ {len(products_list)} product(en) opgehaald (met gedownloade foto's)")
+            print(f"[OK] {len(products_list)} product(en) opgehaald (met gedownloade foto's)")
             return products_list
         
         # Replace the function temporarily
@@ -211,17 +269,17 @@ async def main():
                         timeout=30
                     )
                     if update_response.ok:
-                        print(f"\n✅ {len(updates)} product(en) bijgewerkt in database")
+                        print(f"\n[OK] {len(updates)} product(en) bijgewerkt in database")
                     else:
-                        print(f"\n⚠️  Fout bij bijwerken: {update_response.status_code}")
+                        print(f"\n[WARNING] Fout bij bijwerken: {update_response.status_code}")
                 except Exception as e:
-                    print(f"\n⚠️  Fout bij bijwerken: {e}")
+                    print(f"\n[WARNING] Fout bij bijwerken: {e}")
     finally:
         # Cleanup temporary directory
         try:
             import shutil
             shutil.rmtree(temp_dir)
-            print(f"\n🧹 Tijdelijke bestanden opgeruimd")
+            print(f"\n[CLEANUP] Tijdelijke bestanden opgeruimd")
         except:
             pass
 

@@ -11,8 +11,21 @@ export async function GET(
     const params = await context.params
     
     // Allow authentication via session or API key (for Python script)
-    const apiKey = request.headers.get('x-api-key') || request.nextUrl.searchParams.get('api_key')
-    const validApiKey = process.env.INTERNAL_API_KEY
+    const apiKeyHeader = request.headers.get('x-api-key')
+    const apiKeyQuery = request.nextUrl.searchParams.get('api_key')
+    const apiKey = apiKeyHeader || apiKeyQuery
+    const validApiKey = process.env.INTERNAL_API_KEY || 'internal-key-change-in-production'
+    
+    // Log for debugging (only in development)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('[IMAGES API] API Key check:', {
+        hasHeader: !!apiKeyHeader,
+        hasQuery: !!apiKeyQuery,
+        keyLength: apiKey?.length,
+        validKeyLength: validApiKey.length,
+        keysMatch: apiKey === validApiKey
+      })
+    }
     
     // Try session first, then API key
     let session = null
@@ -22,8 +35,24 @@ export async function GET(
       // Session check failed, try API key
     }
     
-    if (!session && (!apiKey || apiKey !== validApiKey)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // If no session, require valid API key
+    if (!session) {
+      if (!apiKey) {
+        console.log('[IMAGES API] No API key provided')
+        return NextResponse.json({ error: 'Unauthorized: No API key provided' }, { status: 401 })
+      }
+      
+      // Trim whitespace and compare
+      const trimmedApiKey = apiKey.trim()
+      const trimmedValidKey = validApiKey.trim()
+      
+      if (trimmedApiKey !== trimmedValidKey) {
+        console.log('[IMAGES API] Invalid API key:', {
+          provided: trimmedApiKey.substring(0, 10) + '...',
+          expected: trimmedValidKey.substring(0, 10) + '...'
+        })
+        return NextResponse.json({ error: 'Unauthorized: Invalid API key' }, { status: 401 })
+      }
     }
 
     const product = await prisma.product.findUnique({

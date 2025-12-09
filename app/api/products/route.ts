@@ -10,6 +10,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    
+    // Process categoryFields - if empty object, set to null
+    let categoryFields = null
+    if (body.categoryFields && typeof body.categoryFields === 'object' && Object.keys(body.categoryFields).length > 0) {
+      categoryFields = body.categoryFields
+    }
+    
+    // Process ebayFields - if empty object, set to null
+    let ebayFields = null
+    if (body.ebayFields && typeof body.ebayFields === 'object' && Object.keys(body.ebayFields).length > 0) {
+      ebayFields = body.ebayFields
+    }
+    
     const product = await prisma.product.create({
       data: {
         title: body.title,
@@ -17,14 +30,11 @@ export async function POST(request: NextRequest) {
         price: body.price,
         articleNumber: body.articleNumber,
         condition: body.condition,
-        material: body.material,
-        thickness: body.thickness,
-        totalSurface: body.totalSurface,
         deliveryOption: body.deliveryOption,
         location: body.location,
         categoryId: body.categoryId || null,
-        categoryFields: body.categoryFields || null,
-        ebayFields: body.ebayFields || null,
+        categoryFields: categoryFields,
+        ebayFields: ebayFields,
         platforms: body.platforms || ['marktplaats'],
         status: 'pending', // Always set to pending for new products
         userId: session.user.id,

@@ -6,8 +6,6 @@ echo Vercel Deployment Script
 echo ========================================
 echo.
 
-cd webapp
-
 echo Stap 1: Controleren of Vercel CLI geinstalleerd is...
 vercel --version >nul 2>&1
 if %errorlevel% neq 0 (

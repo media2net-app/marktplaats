@@ -1,0 +1,77 @@
+========================================
+BELANGRIJK: MAPSTRUCTUUR
+========================================
+
+Zorg dat de mapstructuur er zo uitziet:
+
+Mike\
+  ├── install_and_run_marktplaats.bat
+  ├── run_marktplaats_standalone.bat
+  ├── requirements.txt
+  ├── scripts\
+  │   ├── post_marktplaats_standalone.py
+  │   └── post_ads.py
+  └── (andere bestanden)
+
+========================================
+INSTALLATIE STAPPEN
+========================================
+
+1. Pak de hele "Mike" map uit op je computer
+   Bijvoorbeeld: C:\Users\Mike\Desktop\Mike\
+
+2. Open de "Mike" map in Windows Verkenner
+
+3. Dubbelklik op: install_and_run_marktplaats.bat
+   - Dit bestand MOET in dezelfde map staan als de "scripts" map
+   - Als je een fout krijgt, controleer of de mapstructuur klopt
+
+4. Wacht tot de installatie klaar is (kan enkele minuten duren)
+
+5. Log in op Marktplaats in Chrome (voordat je het script start)
+
+6. Dubbelklik op: run_marktplaats_standalone.bat om producten te plaatsen
+
+========================================
+ALS JE EEN FOUT KRIJGT
+========================================
+
+Fout: "Scripts directory niet gevonden"
+
+Oplossing:
+1. Controleer of je de hele "Mike" map hebt uitgepakt
+2. Zorg dat install_and_run_marktplaats.bat in dezelfde map staat als de "scripts" map
+3. Open Windows Verkenner en ga naar de "Mike" map
+4. Je moet deze bestanden zien:
+   - install_and_run_marktplaats.bat
+   - run_marktplaats_standalone.bat
+   - scripts (map)
+5. Dubbelklik op install_and_run_marktplaats.bat vanuit Windows Verkenner
+   (niet vanuit een zip-bestand!)
+
+========================================
+CONTROLEER MAPSTRUCTUUR
+========================================
+
+Open de "Mike" map en controleer:
+
+✓ Zie je een map genaamd "scripts"?
+✓ Zie je het bestand "install_and_run_marktplaats.bat"?
+✓ Zie je in de "scripts" map het bestand "post_marktplaats_standalone.py"?
+
+Als een van deze ontbreekt, is de map niet goed uitgepakt!
+
+========================================
+
+
+
+
+
+
+
+
+
+
+
+
+

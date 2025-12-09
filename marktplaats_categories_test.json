@@ -1,0 +1,54 @@
+{
+  "scrapedAt": "2025-11-30T14:51:23.988646",
+  "totalCategories": 3,
+  "note": "Test run - eerste 3 hoofdcategorieën",
+  "categories": [
+    {
+      "id": "antiek-en-kunst",
+      "name": "Antiek en Kunst",
+      "level": 1,
+      "parentId": null,
+      "path": "Antiek en Kunst",
+      "subcategories": null
+    },
+    {
+      "id": "audio-tv-en-foto",
+      "name": "Audio, Tv en Foto",
+      "level": 1,
+      "parentId": null,
+      "path": "Audio, Tv en Foto",
+      "subcategories": null
+    },
+    {
+      "id": "autos",
+      "name": "Auto's",
+      "level": 1,
+      "parentId": null,
+      "path": "Auto's",
+      "subcategories": null
+    }
+  ],
+  "flatCategories": [
+    {
+      "id": "antiek-en-kunst",
+      "name": "Antiek en Kunst",
+      "level": 1,
+      "parentId": null,
+      "path": "Antiek en Kunst"
+    },
+    {
+      "id": "audio-tv-en-foto",
+      "name": "Audio, Tv en Foto",
+      "level": 1,
+      "parentId": null,
+      "path": "Audio, Tv en Foto"
+    },
+    {
+      "id": "autos",
+      "name": "Auto's",
+      "level": 1,
+      "parentId": null,
+      "path": "Auto's"
+    }
+  ]
+}

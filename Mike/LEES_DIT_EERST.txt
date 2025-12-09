@@ -1,0 +1,64 @@
+========================================
+MARKTPLAATS AUTOMATOR - INSTRUCTIES
+========================================
+
+BELANGRIJK: Lees eerst README_STANDALONE.md voor volledige instructies!
+
+BELANGRIJK: MAPSTRUCTUUR
+=========================
+
+Zorg dat de hele "Mike" map is uitgepakt en dat de structuur klopt:
+- install_and_run_marktplaats.bat (dit bestand)
+- scripts\ (map met scripts)
+- run_marktplaats_standalone.bat
+
+Als je een fout krijgt over "Scripts directory niet gevonden", 
+zie INSTALLATIE_INSTRUCTIES.txt voor hulp!
+
+SNELLE START:
+=============
+
+1. Installeer Python 3.9 of hoger van: https://www.python.org/downloads/
+   - BELANGRIJK: Vink "Add Python to PATH" aan tijdens installatie!
+
+2. Pak de hele "Mike" map uit op je computer
+   - Bijvoorbeeld: C:\Users\Mike\Desktop\Mike\
+
+3. Open de "Mike" map in Windows Verkenner
+
+4. Dubbelklik op: install_and_run_marktplaats.bat
+   - Dit installeert alles automatisch
+   - Dit kan enkele minuten duren
+   - Zorg dat dit bestand in dezelfde map staat als de "scripts" map!
+
+5. Daarna gebruik je: run_marktplaats_standalone.bat
+   - Dubbelklik hierop om producten te plaatsen
+
+WAT HEB JE NODIG:
+=================
+
+✓ Python 3.9+ (met PATH)
+✓ Internet verbinding
+✓ Chrome browser (al geinstalleerd op Windows)
+✓ Ingelogd zijn op Marktplaats in Chrome
+
+WAT DOET HET SCRIPT:
+====================
+
+1. Haalt alle pending producten op van de server
+2. Downloadt foto's automatisch
+3. Opent Chrome
+4. Plaatst producten op Marktplaats
+5. Update de database automatisch
+
+PROBLEMEN?
+==========
+
+Zie README_STANDALONE.md voor troubleshooting.
+
+Voor vragen, neem contact op met de ontwikkelaar.
+
+========================================
+
+
+

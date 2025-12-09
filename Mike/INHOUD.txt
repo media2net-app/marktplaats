@@ -1,0 +1,38 @@
+========================================
+INHOUD VAN DEZE MAP
+========================================
+
+BELANGRIJKE BESTANDEN:
+======================
+
+1. LEES_DIT_EERST.txt
+   - Snelle start instructies
+   - Lees dit eerst!
+
+2. README_STANDALONE.md
+   - Volledige documentatie
+   - Troubleshooting guide
+
+3. install_and_run_marktplaats.bat
+   - EERSTE KEER: Dubbelklik hierop
+   - Installeert alles automatisch
+
+4. run_marktplaats_standalone.bat
+   - DAARNA: Dubbelklik hierop om te gebruiken
+   - Plaatst producten op Marktplaats
+
+5. requirements.txt
+   - Lijst van Python dependencies
+   - Wordt automatisch geinstalleerd
+
+SCRIPTS MAP:
+============
+
+De scripts/ map bevat alle Python scripts die nodig zijn:
+- post_marktplaats_standalone.py (hoofdscript)
+- post_ads.py (Marktplaats automatisering)
+- scrape_ad_stats.py (statistieken ophalen)
+- scrape_user_ads.py (gebruiker advertenties)
+- En andere ondersteunende scripts
+
+========================================

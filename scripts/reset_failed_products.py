@@ -14,6 +14,22 @@ def main():
     base_url = os.getenv('NEXTAUTH_URL') or os.getenv('API_BASE_URL') or 'http://localhost:3000'
     api_key = os.getenv('INTERNAL_API_KEY') or 'internal-key-change-in-production'
     
+    # Check if still using localhost (development)
+    if 'localhost' in base_url or '127.0.0.1' in base_url:
+        print("=" * 70)
+        print("⚠️  WAARSCHUWING: Je gebruikt nog localhost!")
+        print("=" * 70)
+        print(f"   Huidige URL: {base_url}")
+        print()
+        print("   Voor productie:")
+        print("   1. Open het .env bestand in de rootmap")
+        print("   2. Pas NEXTAUTH_URL en API_BASE_URL aan naar je productie URL")
+        print("   3. Bijvoorbeeld: https://jouw-domein.vercel.app")
+        print()
+        print("   Doorgaan met localhost...")
+        print("=" * 70)
+        print()
+    
     # Reset all failed products
     reset_url = f"{base_url}/api/products/reset-all-failed"
     

@@ -26,6 +26,10 @@ webapp/.next/
 webapp/out/
 webapp/build/
 webapp/dist/
+.next/
+out/
+build/
+dist/
 
 # Database
 *.db
@@ -64,3 +68,4 @@ user_data/
 debug_*.png
 debug_*.jpg
 
+.vercel

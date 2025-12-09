@@ -31,13 +31,3 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "python scripts\post_all_
 echo.
 echo Log opgeslagen in logs\last_run.log
 pause
-{
-  "cells": [],
-  "metadata": {
-    "language_info": {
-      "name": "python"
-    }
-  },
-  "nbformat": 4,
-  "nbformat_minor": 2
-}

@@ -1,0 +1,17 @@
+========================================
+INTERNAL_API_KEY voor Mike
+========================================
+
+INTERNAL_API_KEY=LvR3fBWmRxgqdt+ggF/sxCMEjDQYd7TtcC3sBnP+Kvs=
+
+========================================
+INSTRUCTIES VOOR MIKE:
+========================================
+
+1. Open het .env bestand in deze map
+2. Zoek de regel: INTERNAL_API_KEY=jouw-api-key
+3. Vervang door: INTERNAL_API_KEY=LvR3fBWmRxgqdt+ggF/sxCMEjDQYd7TtcC3sBnP+Kvs=
+4. Sla op
+
+Dezelfde key moet ook in Vercel staan!
+

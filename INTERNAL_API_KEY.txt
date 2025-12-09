@@ -1,0 +1,41 @@
+========================================
+INTERNAL_API_KEY
+========================================
+
+Gegenereerd op: $(date)
+
+Je INTERNAL_API_KEY is:
+LvR3fBWmRxgqdt+ggF/sxCMEjDQYd7TtcC3sBnP+Kvs=
+
+========================================
+INSTRUCTIES:
+========================================
+
+1. ZET IN VERCEL:
+   - Ga naar: https://vercel.com/dashboard
+   - Selecteer project: marktplaats
+   - Ga naar: Settings > Environment Variables
+   - Klik "Add New"
+   - Name: INTERNAL_API_KEY
+   - Value: LvR3fBWmRxgqdt+ggF/sxCMEjDQYd7TtcC3sBnP+Kvs=
+   - Environment: Alle (Production, Preview, Development)
+   - Klik "Save"
+
+2. REDEPLOY:
+   - Ga naar Deployments tab
+   - Klik op ⋯ naast laatste deployment
+   - Kies "Redeploy"
+
+3. ZET IN JE .env BESTAND:
+   INTERNAL_API_KEY=LvR3fBWmRxgqdt+ggF/sxCMEjDQYd7TtcC3sBnP+Kvs=
+
+4. ZET IN MIKE_FINAL/.env:
+   INTERNAL_API_KEY=LvR3fBWmRxgqdt+ggF/sxCMEjDQYd7TtcC3sBnP+Kvs=
+
+========================================
+BELANGRIJK:
+========================================
+- Gebruik EXACT dezelfde key overal
+- Geen extra spaties!
+- Bewaar dit bestand veilig (verwijder het niet)
+

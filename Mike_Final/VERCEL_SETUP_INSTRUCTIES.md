@@ -79,3 +79,4 @@ Als het na deze stappen nog steeds niet werkt:
    - Als je "Unauthorized" krijgt, staat de key niet goed in Vercel
    - Als je JSON data krijgt, werkt het!
 
+

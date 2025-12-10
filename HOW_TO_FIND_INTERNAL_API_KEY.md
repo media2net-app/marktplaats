@@ -99,3 +99,4 @@ Na het instellen, test of het werkt:
 - Controleer of de regel begint met `INTERNAL_API_KEY=` (geen spaties rond de `=`)
 - Controleer of er geen `#` voor de regel staat (dat maakt het een commentaar)
 
+

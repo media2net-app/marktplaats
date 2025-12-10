@@ -22,7 +22,12 @@ INTERNAL_API_KEY = os.getenv('INTERNAL_API_KEY')
 sys.path.insert(0, os.path.dirname(__file__))
 
 if not INTERNAL_API_KEY:
-    print("ERROR: INTERNAL_API_KEY not set in environment variables")
+    print("=" * 70)
+    print("❌ ERROR: INTERNAL_API_KEY not set in environment variables")
+    print("=" * 70)
+    print("Please set INTERNAL_API_KEY in Railway environment variables")
+    print("This should match the INTERNAL_API_KEY in your Vercel app")
+    print("=" * 70)
     sys.exit(1)
 
 def check_pending_products():
@@ -137,18 +142,33 @@ async def post_pending_products_async():
 
 async def main_async():
     """Main worker loop (async)"""
-    print("=" * 70)
-    print("🚂 Railway Marktplaats Worker")
-    print("=" * 70)
-    print(f"API Base URL: {API_BASE_URL}")
-    print(f"Check Interval: {CHECK_INTERVAL} seconds ({CHECK_INTERVAL // 60} minutes)")
-    print(f"INTERNAL_API_KEY: {'✅ Set' if INTERNAL_API_KEY else '❌ Not set'}")
-    print("=" * 70)
-    print()
+    # Force flush to ensure logs are visible immediately
+    import sys
+    sys.stdout.flush()
+    sys.stderr.flush()
+    
+    print("=" * 70, flush=True)
+    print("🚂 Railway Marktplaats Worker", flush=True)
+    print("=" * 70, flush=True)
+    print(f"API Base URL: {API_BASE_URL}", flush=True)
+    print(f"Check Interval: {CHECK_INTERVAL} seconds ({CHECK_INTERVAL // 60} minutes)", flush=True)
+    print(f"INTERNAL_API_KEY: {'✅ Set' if INTERNAL_API_KEY else '❌ Not set'}", flush=True)
+    print("=" * 70, flush=True)
+    print("", flush=True)
     
     if not INTERNAL_API_KEY:
-        print("❌ ERROR: INTERNAL_API_KEY not set!")
-        print("   Please set it in Railway environment variables")
+        print("❌ ERROR: INTERNAL_API_KEY not set!", flush=True)
+        print("   Please set it in Railway environment variables", flush=True)
+        sys.exit(1)
+    
+    # Test import of post_ads
+    try:
+        from post_ads import run as post_ads_run
+        print("✅ Successfully imported post_ads module", flush=True)
+    except Exception as e:
+        print(f"❌ ERROR: Failed to import post_ads: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
     
     consecutive_errors = 0
@@ -160,8 +180,8 @@ async def main_async():
             pending_count = check_pending_products()
             
             if pending_count > 0:
-                print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Found {pending_count} pending product(s)")
-                print("Starting batch post with Playwright/Chromium...")
+                print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Found {pending_count} pending product(s)", flush=True)
+                print("Starting batch post with Playwright/Chromium...", flush=True)
                 
                 success = await post_pending_products_async()
                 
@@ -177,7 +197,7 @@ async def main_async():
                         await asyncio.sleep(CHECK_INTERVAL * 2)  # Wait 2x longer
                         consecutive_errors = 0
             else:
-                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] No pending products. Waiting {CHECK_INTERVAL} seconds...")
+                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] No pending products. Waiting {CHECK_INTERVAL} seconds...", flush=True)
                 consecutive_errors = 0  # Reset error count if no pending products
             
             # Wait before next check

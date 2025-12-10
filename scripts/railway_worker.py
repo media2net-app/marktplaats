@@ -1,6 +1,7 @@
 """
 Railway Worker - Continuously monitors and posts pending products
 This script runs on Railway and periodically checks for pending products
+Uses Playwright directly to post to Marktplaats (not via API)
 """
 import asyncio
 import os
@@ -16,6 +17,9 @@ load_dotenv()
 CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '300'))  # Check every 5 minutes (300 seconds)
 API_BASE_URL = os.getenv('API_BASE_URL') or os.getenv('NEXTAUTH_URL') or 'http://localhost:3000'
 INTERNAL_API_KEY = os.getenv('INTERNAL_API_KEY')
+
+# Add scripts directory to path for importing post_ads
+sys.path.insert(0, os.path.dirname(__file__))
 
 if not INTERNAL_API_KEY:
     print("ERROR: INTERNAL_API_KEY not set in environment variables")
@@ -40,44 +44,99 @@ def check_pending_products():
         print(f"Error checking pending products: {e}")
         return 0
 
-def post_pending_products():
-    """Post all pending products via batch endpoint"""
+async def post_pending_products_async():
+    """Post all pending products using Playwright directly"""
     try:
-        url = f"{API_BASE_URL}/api/products/batch-post"
-        print(f"Calling batch post endpoint: {url}")
+        # Import post_ads module
+        from post_ads import run as post_ads_run
         
-        response = requests.post(
-            url,
+        # Get pending products from API
+        api_url = f"{API_BASE_URL}/api/products/pending?api_key={INTERNAL_API_KEY}"
+        print(f"Fetching pending products from: {api_url}")
+        
+        response = requests.get(
+            api_url,
             headers={'x-api-key': INTERNAL_API_KEY},
-            timeout=600  # 10 minutes timeout for batch posting
+            timeout=30
         )
         
-        if response.status_code == 200:
-            data = response.json()
-            print(f"✅ Batch posting result: {data.get('message', 'Success')}")
-            print(f"   Processed: {data.get('processed', 0)}")
-            print(f"   Results: {len(data.get('results', []))}")
-            print(f"   Errors: {len(data.get('errors', []))}")
+        if response.status_code != 200:
+            print(f"❌ Error fetching pending products: {response.status_code}")
+            return False
+        
+        pending_products = response.json()
+        if not pending_products or len(pending_products) == 0:
+            print("No pending products found")
+            return True
+        
+        print(f"Found {len(pending_products)} pending product(s)")
+        
+        # Call post_ads.py directly with API URL
+        # This will use Playwright/Chromium to post to Marktplaats
+        results = await post_ads_run(
+            csv_path=None,
+            api_url=api_url,
+            product_id=None,  # None means batch mode
+            login_only=False,
+            keep_open=False
+        )
+        
+        if results and len(results) > 0:
+            # Update products via batch-update endpoint
+            updates = []
+            for result in results:
+                # Find matching product
+                matching_product = None
+                for product in pending_products:
+                    if result.get('article_number') and product.get('articleNumber') == result.get('article_number'):
+                        matching_product = product
+                        break
+                    elif result.get('title') and product.get('title') == result.get('title'):
+                        matching_product = product
+                        break
+                
+                if matching_product:
+                    updates.append({
+                        'productId': matching_product['id'],
+                        'status': 'completed',
+                        'ad_url': result.get('ad_url'),
+                        'ad_id': result.get('ad_id'),
+                        'views': result.get('views', 0),
+                        'saves': result.get('saves', 0),
+                        'posted_at': result.get('posted_at'),
+                    })
             
-            if data.get('errors'):
-                print("\n⚠️ Errors:")
-                for error in data.get('errors', [])[:5]:  # Show first 5 errors
-                    print(f"   - {error.get('title', 'Unknown')}: {error.get('error', 'Unknown error')}")
+            # Update all products via batch endpoint
+            if updates:
+                update_url = f"{API_BASE_URL}/api/products/batch-update"
+                try:
+                    update_response = requests.post(
+                        update_url,
+                        json={'updates': updates},
+                        headers={'x-api-key': INTERNAL_API_KEY},
+                        timeout=30
+                    )
+                    if update_response.ok:
+                        print(f"✅ {len(updates)} product(s) updated in database")
+                    else:
+                        print(f"⚠️ Error updating products: {update_response.status_code}")
+                except Exception as e:
+                    print(f"⚠️ Error updating products: {e}")
             
+            print(f"✅ Batch posting completed: {len(results)} product(s) processed")
             return True
         else:
-            error_data = response.json() if response.headers.get('content-type', '').startswith('application/json') else {}
-            print(f"❌ Error posting products: {response.status_code}")
-            print(f"   {error_data.get('error', 'Unknown error')}")
+            print("⚠️ No results from posting")
             return False
+            
     except Exception as e:
         print(f"❌ Exception during batch posting: {e}")
         import traceback
         traceback.print_exc()
         return False
 
-def main():
-    """Main worker loop"""
+async def main_async():
+    """Main worker loop (async)"""
     print("=" * 70)
     print("🚂 Railway Marktplaats Worker")
     print("=" * 70)
@@ -102,9 +161,9 @@ def main():
             
             if pending_count > 0:
                 print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Found {pending_count} pending product(s)")
-                print("Starting batch post...")
+                print("Starting batch post with Playwright/Chromium...")
                 
-                success = post_pending_products()
+                success = await post_pending_products_async()
                 
                 if success:
                     consecutive_errors = 0
@@ -115,14 +174,14 @@ def main():
                     
                     if consecutive_errors >= max_consecutive_errors:
                         print(f"\n⚠️ Too many consecutive errors ({max_consecutive_errors}). Waiting longer before retry...")
-                        time.sleep(CHECK_INTERVAL * 2)  # Wait 2x longer
+                        await asyncio.sleep(CHECK_INTERVAL * 2)  # Wait 2x longer
                         consecutive_errors = 0
             else:
                 print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] No pending products. Waiting {CHECK_INTERVAL} seconds...")
                 consecutive_errors = 0  # Reset error count if no pending products
             
             # Wait before next check
-            time.sleep(CHECK_INTERVAL)
+            await asyncio.sleep(CHECK_INTERVAL)
             
         except KeyboardInterrupt:
             print("\n\n⚠️ Worker stopped by user")
@@ -135,10 +194,14 @@ def main():
             
             if consecutive_errors >= max_consecutive_errors:
                 print(f"⚠️ Too many errors. Waiting {CHECK_INTERVAL * 2} seconds before retry...")
-                time.sleep(CHECK_INTERVAL * 2)
+                await asyncio.sleep(CHECK_INTERVAL * 2)
                 consecutive_errors = 0
             else:
-                time.sleep(60)  # Wait 1 minute before retry on error
+                await asyncio.sleep(60)  # Wait 1 minute before retry on error
+
+def main():
+    """Main entry point"""
+    asyncio.run(main_async())
 
 if __name__ == '__main__':
     main()

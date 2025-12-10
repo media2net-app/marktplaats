@@ -217,9 +217,9 @@ export default function AdStatsTable({ products, onRefresh }: AdStatsTableProps)
                   <div className="text-sm text-gray-900">{formatDate(product.postedAt)}</div>
                 </td>
                 <td className="px-4 lg:px-6 py-4 whitespace-nowrap">
-                  {product.marktplaatsUrl && (
+                  {(product.marktplaatsUrl || product.marktplaatsAdId) && (
                     <a
-                      href={product.marktplaatsUrl}
+                      href={product.marktplaatsUrl || (product.marktplaatsAdId ? `https://www.marktplaats.nl/${product.marktplaatsAdId}.html` : '#')}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
@@ -246,9 +246,9 @@ export default function AdStatsTable({ products, onRefresh }: AdStatsTableProps)
                 <h4 className="text-sm font-semibold text-gray-900 truncate">{product.title}</h4>
                 <p className="text-xs text-gray-500 mt-1">#{product.articleNumber}</p>
               </div>
-              {product.marktplaatsUrl && (
+              {(product.marktplaatsUrl || product.marktplaatsAdId) && (
                 <a
-                  href={product.marktplaatsUrl}
+                  href={product.marktplaatsUrl || (product.marktplaatsAdId ? `https://www.marktplaats.nl/${product.marktplaatsAdId}.html` : '#')}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700"

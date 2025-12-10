@@ -346,7 +346,7 @@ export default function ProductList({ products }: ProductListProps) {
           {/* Content Section */}
           <div className="px-4 sm:px-6 py-4 sm:py-5">
             {/* Advertentie Info */}
-            {(product.marktplaatsAdId || product.postedAt || product.marktplaatsUrl) && (
+            {(product.marktplaatsAdId || product.postedAt || product.marktplaatsUrl || product.marktplaatsAccount) && (
               <div className="mb-5 pb-5 border-b border-gray-200">
                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Advertentie Informatie</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -377,10 +377,10 @@ export default function ProductList({ products }: ProductListProps) {
                       <span className="font-semibold text-gray-900">{product.marktplaatsAccount}</span>
                     </div>
                   )}
-                  {product.marktplaatsUrl && (
+                  {(product.marktplaatsUrl || product.marktplaatsAdId) && (
                     <div className="sm:col-span-2 lg:col-span-1">
                       <a
-                        href={product.marktplaatsUrl}
+                        href={product.marktplaatsUrl || (product.marktplaatsAdId ? `https://www.marktplaats.nl/${product.marktplaatsAdId}.html` : '#')}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}

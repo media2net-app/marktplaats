@@ -47,6 +47,7 @@ class Product:
 	total_surface: Optional[str] = None  # Deprecated: use category_fields instead
 	delivery_option: Optional[str] = None
 	category_fields: Optional[Dict] = None  # Category-specific fields from database
+	photo_api_url: Optional[str] = None  # API endpoint to fetch photo URLs
 
 
 def read_products_from_api(api_url: str) -> List[Product]:
@@ -116,6 +117,7 @@ def read_products_from_api(api_url: str) -> List[Product]:
 				total_surface=item.get('total_surface') or None,  # Keep for backward compatibility
 				delivery_option=item.get('delivery_option') or None,
 				category_fields=category_fields if isinstance(category_fields, dict) else {},
+				photo_api_url=item.get('photo_api_url') or None,  # API endpoint to fetch photos
 			)
 			products.append(product)
 		

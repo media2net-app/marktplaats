@@ -55,7 +55,25 @@ def read_products_from_api(api_url: str) -> List[Product]:
 		raise ImportError("requests library is required for API mode. Install with: pip install requests")
 	
 	try:
-		response = requests.get(api_url, timeout=30)
+		# Extract API key from URL if present, or get from environment
+		from urllib.parse import urlparse, parse_qs
+		parsed_url = urlparse(api_url)
+		query_params = parse_qs(parsed_url.query)
+		api_key = query_params.get('api_key', [None])[0]
+		
+		# If no API key in URL, try environment variable
+		if not api_key:
+			import os
+			from dotenv import load_dotenv
+			load_dotenv()
+			api_key = os.getenv('INTERNAL_API_KEY')
+		
+		# Prepare headers with API key
+		headers = {}
+		if api_key:
+			headers['x-api-key'] = api_key
+		
+		response = requests.get(api_url, timeout=30, headers=headers)
 		response.raise_for_status()
 		data = response.json()
 		
@@ -1089,10 +1107,20 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 
 	os.makedirs(user_data_dir, exist_ok=True)
 
+	# Detect headless mode from environment variable
+	# Default to False (visible) for local development, True for servers
+	headless_env = os.getenv('PLAYWRIGHT_HEADLESS', '').lower()
+	if headless_env == '':
+		# Auto-detect: if no DISPLAY and CI/server environment, use headless
+		is_server = not os.getenv('DISPLAY') and (os.getenv('CI') or os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('RENDER'))
+		headless = is_server
+	else:
+		headless = headless_env == 'true'
+
 	async with async_playwright() as p:
 		browser = await p.chromium.launch_persistent_context(
 			user_data_dir=user_data_dir,
-			headless=False,
+			headless=headless,
 			viewport={"width": 1280, "height": 900},
 			args=["--disable-blink-features=AutomationControlled"],
 		)

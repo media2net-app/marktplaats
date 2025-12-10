@@ -1,0 +1,66 @@
+# Railway ignore file - exclude unnecessary files from deployment
+
+# Node modules (we only need Python)
+node_modules/
+.next/
+out/
+dist/
+
+# Development files
+*.log
+*.bat
+*.sh
+*.md
+!RAILWAY_SETUP.md
+!README.md
+
+# Data files
+*.csv
+*.json
+!package.json
+!railway.json
+
+# User data (will be created on Railway)
+user_data/
+
+# Git
+.git/
+.gitignore
+
+# Environment files (use Railway variables instead)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files
+test_*.py
+*_test.py
+
+# Documentation
+docs/
+*.md
+!RAILWAY_SETUP.md
+!README.md
+
+# Mike folders (not needed on Railway)
+Mike/
+Mike_Final/
+
+# Media (stored in Vercel Blob)
+public/media/
+
+# Prisma dev database
+prisma/dev.db
+*.db
+*.db-journal
+

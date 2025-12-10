@@ -30,14 +30,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Get all pending products
+    // When called with API key (no session), get ALL pending products regardless of user
+    // When called with session, only get products for that user
+    const whereClause: any = {
+      status: 'pending',
+    }
+    
+    // Only filter by userId if we have a session (not for API key calls)
+    if (session?.user) {
+      whereClause.userId = userId
+    }
+    // If API key is used without session, don't filter by userId (get all pending)
+    
+    console.log(`[BATCH-POST] Fetching pending products: userId=${userId || 'ALL (API key)'}, where=${JSON.stringify(whereClause)}`)
+    
     const pendingProducts = await prisma.product.findMany({
-      where: {
-        ...(userId ? { userId } : {}), // Filter by user if session exists
-        status: 'pending',
-      },
+      where: whereClause,
       orderBy: { createdAt: 'asc' },
       take: 50, // Limit to 50 products per batch to avoid timeouts
     })
+    
+    console.log(`[BATCH-POST] Found ${pendingProducts.length} pending products`)
 
     if (pendingProducts.length === 0) {
       return NextResponse.json({
@@ -136,8 +149,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Get counts by status
+    // When called with API key (no session), count ALL products
+    // When called with session, only count products for that user
+    const whereClause: any = {}
+    if (session?.user) {
+      whereClause.userId = session.user.id
+    }
+    // If API key is used without session, don't filter by userId (count all)
+    
     const counts = await prisma.product.groupBy({
       by: ['status'],
+      where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
       _count: true,
     })
 
@@ -145,6 +167,8 @@ export async function GET(request: NextRequest) {
       acc[item.status] = item._count
       return acc
     }, {} as Record<string, number>)
+
+    console.log(`[BATCH-POST GET] Status counts: ${JSON.stringify(statusCounts)}, userId=${session?.user?.id || 'ALL (API key)'}`)
 
     return NextResponse.json({
       pending: statusCounts.pending || 0,

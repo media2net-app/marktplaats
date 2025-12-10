@@ -34,19 +34,26 @@ def check_pending_products():
     """Check how many pending products there are"""
     try:
         url = f"{API_BASE_URL}/api/products/batch-post"
+        print(f"Checking pending products at: {url}", flush=True)
         response = requests.get(
             url,
             headers={'x-api-key': INTERNAL_API_KEY},
             timeout=30
         )
+        print(f"Response status: {response.status_code}", flush=True)
         if response.status_code == 200:
             data = response.json()
-            return data.get('pending', 0)
+            pending_count = data.get('pending', 0)
+            print(f"API returned: pending={pending_count}, processing={data.get('processing', 0)}, completed={data.get('completed', 0)}, failed={data.get('failed', 0)}", flush=True)
+            return pending_count
         else:
-            print(f"Error checking status: {response.status_code}")
+            error_text = response.text[:500] if response.text else "No error message"
+            print(f"Error checking status: {response.status_code} - {error_text}", flush=True)
             return 0
     except Exception as e:
-        print(f"Error checking pending products: {e}")
+        print(f"Error checking pending products: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         return 0
 
 async def post_pending_products_async():

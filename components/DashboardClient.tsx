@@ -130,10 +130,11 @@ export default function DashboardClient({ products: initialProducts }: Dashboard
       )}
 
       {pendingCount > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-sm text-yellow-800">
-            <strong>⚠️ Let op:</strong> Batch posting werkt alleen als je een externe server/worker hebt ingesteld. 
-            Zie <code className="bg-yellow-100 px-1 rounded">SERVER_BATCH_POSTING.md</code> voor instructies.
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>ℹ️ Info:</strong> Je hebt {pendingCount} pending product(en). 
+            De Railway worker controleert automatisch elke 5 minuten en post deze producten naar Marktplaats.
+            Je kunt ook handmatig posten via de knop hierboven.
           </p>
         </div>
       )}

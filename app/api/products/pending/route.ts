@@ -23,10 +23,28 @@ export async function GET(request: NextRequest) {
     }
     
     // Validate API key if no session (trim whitespace for comparison)
-    const isApiKeyValid = apiKey && (apiKey.trim() === validApiKey.trim())
+    const isApiKeyValid = apiKey && validApiKey && (apiKey.trim() === validApiKey.trim())
+    
+    console.log('[PENDING API] Auth check:', {
+      hasSession: !!session_user,
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey?.length,
+      validApiKeyLength: validApiKey?.length,
+      isApiKeyValid,
+      apiKeyMatch: apiKey?.trim() === validApiKey?.trim(),
+    })
     
     if (!session_user && !isApiKeyValid) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.error('[PENDING API] Unauthorized:', {
+        hasSession: !!session_user,
+        hasApiKey: !!apiKey,
+        apiKeyProvided: apiKey?.substring(0, 10) + '...',
+        validApiKeyExpected: validApiKey?.substring(0, 10) + '...',
+      })
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        message: 'Invalid API key or session required',
+      }, { status: 401 })
     }
 
     // Get user ID from session or use a default (for API key mode, get first user or all)

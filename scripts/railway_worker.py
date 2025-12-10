@@ -15,7 +15,7 @@ load_dotenv()
 
 # Configuration
 CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL', '300'))  # Check every 5 minutes (300 seconds)
-API_BASE_URL = os.getenv('API_BASE_URL') or os.getenv('NEXTAUTH_URL') or 'http://localhost:3000'
+API_BASE_URL = (os.getenv('API_BASE_URL') or os.getenv('NEXTAUTH_URL') or 'http://localhost:3000').rstrip('/')
 INTERNAL_API_KEY = os.getenv('INTERNAL_API_KEY')
 
 # Add scripts directory to path for importing post_ads

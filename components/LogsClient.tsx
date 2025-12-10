@@ -37,7 +37,12 @@ export default function LogsClient() {
       if (!response.ok) {
         const data = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
         const errorMsg = data.error || data.details || `HTTP ${response.status}: ${response.statusText}`
-        throw new Error(errorMsg)
+        const error = new Error(errorMsg) as any
+        error.details = data.details
+        error.debug = data.debug
+        error.hint = data.hint
+        error.missing = data.missing
+        throw error
       }
 
       const data = await response.json()
@@ -56,12 +61,33 @@ export default function LogsClient() {
       if (err.message?.includes('fetch') || err.name === 'TypeError') {
         errorMsg = 'Network error: Could not connect to server'
         errorDetails = 'Check if the server is running and your internet connection is working.'
+      } else if (err.hint) {
+        errorDetails = err.hint
+      } else if (err.details) {
+        errorDetails = err.details
       }
       
-      setError(errorMsg)
+      // Show debug info if available
+      if (err.debug) {
+        console.error('Railway API Debug Info:', err.debug)
+        if (err.debug.hint) {
+          errorDetails = err.debug.hint
+        }
+      }
+      
+      // Show missing variables if available
+      if (err.missing && err.missing.length > 0) {
+        errorMsg = `Missing environment variables: ${err.missing.join(', ')}`
+        errorDetails = 'Please set these in Vercel: Settings → Environment Variables → Add'
+      }
+      
+      setError(errorMsg + (errorDetails ? `\n\n${errorDetails}` : ''))
       console.error('Error fetching logs:', {
         message: err.message,
         details: err.details,
+        debug: err.debug,
+        hint: err.hint,
+        missing: err.missing,
         status: err.status,
         type: err.type,
         name: err.name,
@@ -157,9 +183,12 @@ export default function LogsClient() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 text-sm">
-            <strong>Error:</strong> {error}
-          </p>
+          <div className="text-red-800 text-sm whitespace-pre-line">
+            <strong>❌ Error:</strong>
+            <div className="mt-2 font-mono text-xs bg-red-100 p-2 rounded">
+              {error}
+            </div>
+          </div>
           {error.includes('not configured') && (
             <div className="mt-2 text-red-700 text-xs space-y-2">
               <p>Configureer de volgende environment variables in Vercel:</p>

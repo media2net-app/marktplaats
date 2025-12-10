@@ -1,0 +1,192 @@
+'use client'
+
+import { useState, useEffect, useRef } from 'react'
+
+interface LogEntry {
+  timestamp: string
+  message: string
+  level?: string
+}
+
+export default function LogsClient() {
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const logsEndRef = useRef<HTMLDivElement>(null)
+
+  const fetchLogs = async () => {
+    try {
+      setIsRefreshing(true)
+      const response = await fetch('/api/railway/logs?limit=200')
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to fetch logs')
+      }
+
+      const data = await response.json()
+      setLogs(data.logs || [])
+      setError(null)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load logs')
+      console.error('Error fetching logs:', err)
+    } finally {
+      setLoading(false)
+      setIsRefreshing(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchLogs()
+  }, [])
+
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(() => {
+        fetchLogs()
+      }, 5000) // Refresh every 5 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [autoRefresh])
+
+  useEffect(() => {
+    // Auto-scroll to bottom when new logs arrive
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [logs])
+
+  const getLogLevelColor = (level?: string) => {
+    switch (level?.toLowerCase()) {
+      case 'error':
+      case 'err':
+        return 'text-red-600'
+      case 'warn':
+      case 'warning':
+        return 'text-yellow-600'
+      case 'info':
+      case 'inf':
+        return 'text-blue-600'
+      default:
+        return 'text-gray-700'
+    }
+  }
+
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp)
+      return date.toLocaleString('nl-NL', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    } catch {
+      return timestamp
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Railway Logs</h2>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Real-time logs van de Marktplaats worker</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={`px-4 py-2 rounded-lg font-medium text-sm ${
+              autoRefresh
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}
+          >
+            {autoRefresh ? '🔄 Auto-refresh Aan' : '⏸️ Auto-refresh Uit'}
+          </button>
+          <button
+            onClick={fetchLogs}
+            disabled={isRefreshing}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isRefreshing ? 'Verversen...' : '🔄 Verversen'}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800 text-sm">
+            <strong>Error:</strong> {error}
+          </p>
+          {error.includes('not configured') && (
+            <div className="mt-2 text-red-700 text-xs">
+              <p>Configureer de volgende environment variables in Vercel:</p>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li><code>RAILWAY_API_TOKEN</code></li>
+                <li><code>RAILWAY_PROJECT_ID</code></li>
+                <li><code>RAILWAY_SERVICE_ID</code></li>
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            <span className="text-sm text-gray-600">
+              {loading ? 'Laden...' : `${logs.length} log entries`}
+            </span>
+          </div>
+          {autoRefresh && (
+            <span className="text-xs text-gray-500">Auto-refresh elke 5 seconden</span>
+          )}
+        </div>
+        
+        <div className="h-[600px] overflow-y-auto bg-gray-900 text-gray-100 font-mono text-sm p-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-400">Logs laden...</div>
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-gray-400">Geen logs gevonden</div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {logs.map((log, index) => (
+                <div key={index} className="flex gap-3 hover:bg-gray-800 px-2 py-1 rounded">
+                  <span className="text-gray-500 text-xs whitespace-nowrap flex-shrink-0">
+                    {formatTimestamp(log.timestamp)}
+                  </span>
+                  <span className={`flex-shrink-0 w-12 ${getLogLevelColor(log.level)}`}>
+                    [{log.level?.toUpperCase() || 'INFO'}]
+                  </span>
+                  <span className="text-gray-300 flex-1 break-words">
+                    {log.message}
+                  </span>
+                </div>
+              ))}
+              <div ref={logsEndRef} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-800">
+          <strong>💡 Tip:</strong> Logs worden automatisch ververst elke 5 seconden wanneer auto-refresh aan staat.
+          Je kunt ook handmatig verversen met de knop hierboven.
+        </p>
+      </div>
+    </div>
+  )
+}
+

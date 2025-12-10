@@ -35,16 +35,23 @@ export default function LogsClient() {
       const response = await fetch('/api/railway/logs?limit=200')
       
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || 'Failed to fetch logs')
+        const data = await response.json().catch(() => ({ error: `HTTP ${response.status}` }))
+        const errorMsg = data.error || data.details || `HTTP ${response.status}: ${response.statusText}`
+        throw new Error(errorMsg)
       }
 
       const data = await response.json()
       setLogs(data.logs || [])
       setError(null)
     } catch (err: any) {
-      setError(err.message || 'Failed to load logs')
-      console.error('Error fetching logs:', err)
+      const errorMsg = err.message || 'Failed to load logs'
+      setError(errorMsg)
+      console.error('Error fetching logs:', {
+        message: err.message,
+        details: err.details,
+        status: err.status,
+        type: err.type,
+      })
     } finally {
       setLoading(false)
       setIsRefreshing(false)

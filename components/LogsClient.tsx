@@ -14,7 +14,20 @@ export default function LogsClient() {
   const [error, setError] = useState<string | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [services, setServices] = useState<any[]>([])
   const logsEndRef = useRef<HTMLDivElement>(null)
+
+  const fetchServices = async () => {
+    try {
+      const response = await fetch('/api/railway/services')
+      if (response.ok) {
+        const data = await response.json()
+        setServices(data.services || [])
+      }
+    } catch (err) {
+      // Ignore errors
+    }
+  }
 
   const fetchLogs = async () => {
     try {
@@ -40,6 +53,7 @@ export default function LogsClient() {
 
   useEffect(() => {
     fetchLogs()
+    fetchServices()
   }, [])
 
   useEffect(() => {
@@ -125,13 +139,27 @@ export default function LogsClient() {
             <strong>Error:</strong> {error}
           </p>
           {error.includes('not configured') && (
-            <div className="mt-2 text-red-700 text-xs">
+            <div className="mt-2 text-red-700 text-xs space-y-2">
               <p>Configureer de volgende environment variables in Vercel:</p>
               <ul className="list-disc list-inside mt-1 space-y-1">
                 <li><code>RAILWAY_API_TOKEN</code></li>
                 <li><code>RAILWAY_PROJECT_ID</code></li>
                 <li><code>RAILWAY_SERVICE_ID</code></li>
               </ul>
+              {services.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-red-200">
+                  <p className="font-semibold mb-2">Gevonden services in je project:</p>
+                  <div className="space-y-1">
+                    {services.map((service) => (
+                      <div key={service.id} className="bg-white p-2 rounded border border-red-200">
+                        <p className="font-medium text-gray-900">{service.name}</p>
+                        <p className="text-xs text-gray-600 font-mono break-all">Service ID: {service.id}</p>
+                        <p className="text-xs text-gray-500 mt-1">Kopieer deze Service ID en voeg toe als RAILWAY_SERVICE_ID in Vercel</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

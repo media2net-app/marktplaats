@@ -244,6 +244,9 @@ async def choose_category(page: Page, category_path: Optional[str]) -> None:
 	# Wait for category selection page to load
 	await page.wait_for_timeout(WAIT_MEDIUM)
 	
+	# Initialize found_in_suggestions before try block to avoid UnboundLocalError
+	found_in_suggestions = False
+	
 	# First, check if we're on the suggestions page (with radio buttons)
 	# If so, try to find the exact category in suggestions first
 	try:

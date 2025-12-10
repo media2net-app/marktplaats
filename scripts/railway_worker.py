@@ -62,9 +62,10 @@ async def post_pending_products_async():
         # Import post_ads module
         from post_ads import run as post_ads_run
         
-        # Get pending products from API
-        api_url = f"{API_BASE_URL}/api/products/pending?api_key={INTERNAL_API_KEY}"
-        print(f"Fetching pending products from: {api_url}")
+        # Get pending products from API (without API key in URL - use header only)
+        api_url = f"{API_BASE_URL}/api/products/pending"
+        print(f"Fetching pending products from: {api_url}", flush=True)
+        print(f"Using API key: {INTERNAL_API_KEY[:10]}... (length: {len(INTERNAL_API_KEY)})", flush=True)
         
         response = requests.get(
             api_url,
@@ -73,21 +74,23 @@ async def post_pending_products_async():
         )
         
         if response.status_code != 200:
-            print(f"❌ Error fetching pending products: {response.status_code}")
+            error_text = response.text[:500] if response.text else "No error message"
+            print(f"❌ Error fetching pending products: {response.status_code} - {error_text}", flush=True)
             return False
         
         pending_products = response.json()
         if not pending_products or len(pending_products) == 0:
-            print("No pending products found")
+            print("No pending products found", flush=True)
             return True
         
-        print(f"Found {len(pending_products)} pending product(s)")
+        print(f"Found {len(pending_products)} pending product(s)", flush=True)
         
-        # Call post_ads.py directly with API URL
+        # Call post_ads.py directly with API URL (without API key in URL)
+        # post_ads.py will use INTERNAL_API_KEY from environment variable
         # This will use Playwright/Chromium to post to Marktplaats
         results = await post_ads_run(
             csv_path=None,
-            api_url=api_url,
+            api_url=api_url,  # URL without API key - post_ads.py will use env var
             product_id=None,  # None means batch mode
             login_only=False,
             keep_open=False

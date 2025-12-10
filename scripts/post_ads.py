@@ -55,25 +55,40 @@ def read_products_from_api(api_url: str) -> List[Product]:
 		raise ImportError("requests library is required for API mode. Install with: pip install requests")
 	
 	try:
-		# Extract API key from URL if present, or get from environment
-		from urllib.parse import urlparse, parse_qs
+		# Get API key from environment variable (preferred) or URL query param (fallback)
+		import os
+		from dotenv import load_dotenv
+		load_dotenv()
+		api_key = os.getenv('INTERNAL_API_KEY')
+		
+		# If no API key in environment, try to extract from URL (for backwards compatibility)
+		if not api_key:
+			from urllib.parse import urlparse, parse_qs
+			parsed_url = urlparse(api_url)
+			query_params = parse_qs(parsed_url.query)
+			api_key = query_params.get('api_key', [None])[0]
+		
+		# Clean URL - remove api_key from query params to avoid exposing it
+		from urllib.parse import urlparse, urlencode, parse_qs
 		parsed_url = urlparse(api_url)
 		query_params = parse_qs(parsed_url.query)
-		api_key = query_params.get('api_key', [None])[0]
+		clean_params = {k: v for k, v in query_params.items() if k != 'api_key'}
 		
-		# If no API key in URL, try environment variable
-		if not api_key:
-			import os
-			from dotenv import load_dotenv
-			load_dotenv()
-			api_key = os.getenv('INTERNAL_API_KEY')
+		if clean_params:
+			clean_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{urlencode(clean_params, doseq=True)}"
+		else:
+			clean_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
 		
 		# Prepare headers with API key
 		headers = {}
 		if api_key:
 			headers['x-api-key'] = api_key
+			print(f"Using API key from {'environment' if os.getenv('INTERNAL_API_KEY') else 'URL'}: {api_key[:10]}... (length: {len(api_key)})")
+		else:
+			print("⚠️ Warning: No API key found in environment or URL")
 		
-		response = requests.get(api_url, timeout=30, headers=headers)
+		print(f"Fetching products from: {clean_url}")
+		response = requests.get(clean_url, timeout=30, headers=headers)
 		response.raise_for_status()
 		data = response.json()
 		

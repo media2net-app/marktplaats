@@ -13,6 +13,7 @@ interface Product {
   status: string
   marktplaatsUrl?: string | null
   marktplaatsAdId?: string | null
+  marktplaatsAccount?: string | null
   views?: number
   saves?: number
   postedAt?: string | Date | null

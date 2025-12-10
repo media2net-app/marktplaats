@@ -52,6 +52,7 @@ model Product {
   status        String   @default("pending") // pending, processing, completed, failed
   marktplaatsUrl String?
   marktplaatsAdId String? // Advertentienummer (bijv. a1519860984)
+  marktplaatsAccount String? // Marktplaats account email/username waarmee geplaatst
   ebayItemId    String?  // eBay item ID
   ebayListingId String?  // eBay listing ID
   views         Int      @default(0) // Aantal keer bekeken

@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       views?: number
       saves?: number
       posted_at?: string
+      marktplaats_account?: string
     }>
 
     if (!Array.isArray(updates)) {
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
             status: update.status || 'completed',
             marktplaatsUrl: update.ad_url || null,
             marktplaatsAdId: update.ad_id || null,
+            marktplaatsAccount: update.marktplaats_account || null,
             views: update.views || 0,
             saves: update.saves || 0,
             postedAt: postedAtDate,

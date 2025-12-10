@@ -119,6 +119,7 @@ async def post_pending_products_async():
                         'views': result.get('views', 0),
                         'saves': result.get('saves', 0),
                         'posted_at': result.get('posted_at'),
+                        'marktplaats_account': result.get('marktplaats_account'),
                     })
             
             # Update all products via batch endpoint

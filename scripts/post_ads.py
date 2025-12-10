@@ -1259,6 +1259,9 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 			await page.wait_for_timeout(action_delay_ms)
 			print(f"[OK] Succesvol verwerkt: {product.title}")
 			
+			# Get Marktplaats account email from environment (used for posting)
+			marktplaats_account = os.getenv('MARKTPLAATS_EMAIL') or 'Onbekend'
+			
 			# Store result for API mode
 			product_result = {
 				'ad_url': ad_url,
@@ -1269,6 +1272,7 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 				'article_number': product.article_number,
 				'title': product.title,
 				'status': 'completed' if ad_url else 'failed',
+				'marktplaats_account': marktplaats_account,
 			}
 			
 			# For single product mode (has product_id), return immediately

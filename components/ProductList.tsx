@@ -11,6 +11,7 @@ interface Product {
   status: string
   marktplaatsUrl?: string | null
   marktplaatsAdId?: string | null
+  marktplaatsAccount?: string | null
   views?: number
   saves?: number
   postedAt?: string | Date | null
@@ -365,6 +366,15 @@ export default function ProductList({ products }: ProductListProps) {
                       </svg>
                       <span className="text-gray-600">Geplaatst:</span>
                       <span className="font-semibold text-gray-900">{formatDate(product.postedAt)}</span>
+                    </div>
+                  )}
+                  {product.marktplaatsAccount && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span className="text-gray-600">Account:</span>
+                      <span className="font-semibold text-gray-900">{product.marktplaatsAccount}</span>
                     </div>
                   )}
                   {product.marktplaatsUrl && (

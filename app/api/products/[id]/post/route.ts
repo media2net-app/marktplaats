@@ -125,6 +125,9 @@ export async function POST(
         postedAtDate = new Date()
       }
 
+      // Get Marktplaats account from environment
+      const marktplaatsAccount = process.env.MARKTPLAATS_EMAIL || null
+      
       // Update product status to completed with stats
       await prisma.product.update({
         where: { id: params.id },
@@ -132,6 +135,7 @@ export async function POST(
           status: 'completed',
           marktplaatsUrl: adStats?.ad_url || null,
           marktplaatsAdId: adStats?.ad_id || null,
+          marktplaatsAccount: marktplaatsAccount,
           views: adStats?.views || 0,
           saves: adStats?.saves || 0,
           postedAt: postedAtDate,

@@ -16,6 +16,9 @@ interface Product {
   totalSurface?: string | null
   deliveryOption?: string | null
   location?: string | null
+  manufacturerName?: string | null
+  manufacturerAddress?: string | null
+  manufacturerEmail?: string | null
   categoryId?: string | null
   categoryFields?: any
   ebayFields?: any
@@ -76,6 +79,9 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
     deliveryOption: product?.deliveryOption || 'Ophalen of Verzenden',
     location: product?.location || '',
     categoryId: product?.categoryId || '',
+    manufacturerName: (product as any)?.manufacturerName || '',
+    manufacturerAddress: (product as any)?.manufacturerAddress || '',
+    manufacturerEmail: (product as any)?.manufacturerEmail || '',
   })
 
   // Set initial category selection if editing
@@ -580,6 +586,9 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
           deliveryOption: 'Ophalen of Verzenden',
           location: '',
           categoryId: '',
+          manufacturerName: '',
+          manufacturerAddress: '',
+          manufacturerEmail: '',
         })
         setSelectedCategory1('')
         setSelectedCategory2('')
@@ -793,6 +802,60 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
             )}
           </>
         )}
+
+        {/* Fabrikant informatie (altijd tonen) */}
+        <div className="lg:col-span-2">
+          <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-4">Fabrikant Informatie</h3>
+          <p className="text-xs sm:text-sm text-gray-600 mb-4">
+            Als de fabrikant buiten de EU is gevestigd, vermeld dan de gemachtigde in de EU in deze velden. 
+            <a href="https://www.marktplaats.nl/help/verkopen/veiligheid-en-regels" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-700 underline ml-1">Meer informatie</a>
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+            Handelsnaam fabrikant
+            <span className="text-xs text-gray-500 ml-2">({formData.manufacturerName?.length || 0}/255)</span>
+          </label>
+          <input
+            type="text"
+            maxLength={255}
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400 text-base"
+            value={formData.manufacturerName}
+            onChange={(e) => setFormData({ ...formData, manufacturerName: e.target.value })}
+            placeholder="Handelsnaam fabrikant"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+            Postadres fabrikant
+            <span className="text-xs text-gray-500 ml-2">({formData.manufacturerAddress?.length || 0}/255)</span>
+          </label>
+          <input
+            type="text"
+            maxLength={255}
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400 text-base"
+            value={formData.manufacturerAddress}
+            onChange={(e) => setFormData({ ...formData, manufacturerAddress: e.target.value })}
+            placeholder="Postadres fabrikant"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+            E-mailadres fabrikant
+            <span className="text-xs text-gray-500 ml-2">({formData.manufacturerEmail?.length || 0}/255)</span>
+          </label>
+          <input
+            type="email"
+            maxLength={255}
+            className="block w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400 text-base"
+            value={formData.manufacturerEmail}
+            onChange={(e) => setFormData({ ...formData, manufacturerEmail: e.target.value })}
+            placeholder="E-mailadres fabrikant"
+          />
+        </div>
 
         {/* Stap 3: Overige informatie (alleen tonen als categorie geselecteerd) */}
         {selectedCategoryId && (

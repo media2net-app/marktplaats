@@ -46,6 +46,9 @@ model Product {
   totalSurface  String?
   deliveryOption String?
   location      String?
+  manufacturerName String? // Handelsnaam fabrikant
+  manufacturerAddress String? // Postadres fabrikant
+  manufacturerEmail String? // E-mailadres fabrikant
   status        String   @default("pending") // pending, processing, completed, failed
   marktplaatsUrl String?
   marktplaatsAdId String? // Advertentienummer (bijv. a1519860984)

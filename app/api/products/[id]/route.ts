@@ -66,6 +66,9 @@ export async function PUT(
       condition: body.condition,
       deliveryOption: body.deliveryOption,
       location: body.location,
+      manufacturerName: body.manufacturerName !== undefined ? (body.manufacturerName || null) : undefined,
+      manufacturerAddress: body.manufacturerAddress !== undefined ? (body.manufacturerAddress || null) : undefined,
+      manufacturerEmail: body.manufacturerEmail !== undefined ? (body.manufacturerEmail || null) : undefined,
       categoryId: body.categoryId !== undefined ? (body.categoryId || null) : undefined,
       platforms: body.platforms || ['marktplaats'],
     }

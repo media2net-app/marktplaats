@@ -838,12 +838,99 @@ async def fill_category_fields(page: Page, category_fields: Dict) -> None:
 			continue
 
 
+async def download_photos_from_api(photo_api_url: str, article_number: str, temp_dir: str) -> List[str]:
+	"""Download photos from API URL and save to temporary directory."""
+	if not requests:
+		log_step("  [WARNING] requests library not available, cannot download photos from API")
+		return []
+	
+	try:
+		# Get API key from environment
+		api_key = os.getenv('INTERNAL_API_KEY')
+		
+		# Prepare headers
+		headers = {}
+		if api_key:
+			headers['x-api-key'] = api_key
+		
+		log_step(f"  Foto's ophalen van API: {photo_api_url}")
+		response = requests.get(photo_api_url, headers=headers, timeout=30)
+		response.raise_for_status()
+		
+		data = response.json()
+		image_urls = data.get('images', [])
+		
+		if not image_urls:
+			log_step("  Geen foto's gevonden in API response")
+			return []
+		
+		log_step(f"  {len(image_urls)} foto URL(s) gevonden, downloaden...")
+		
+		# Create temp directory for this product
+		product_temp_dir = os.path.join(temp_dir, article_number or 'temp')
+		os.makedirs(product_temp_dir, exist_ok=True)
+		
+		downloaded_photos = []
+		for i, image_url in enumerate(image_urls, 1):
+			try:
+				# Download image
+				img_response = requests.get(image_url, timeout=30)
+				img_response.raise_for_status()
+				
+				# Determine file extension from URL or content type
+				ext = '.jpg'  # default
+				if '.jpg' in image_url.lower() or '.jpeg' in image_url.lower():
+					ext = '.jpg'
+				elif '.png' in image_url.lower():
+					ext = '.png'
+				elif '.heic' in image_url.lower():
+					ext = '.heic'
+				elif img_response.headers.get('content-type'):
+					content_type = img_response.headers['content-type']
+					if 'jpeg' in content_type or 'jpg' in content_type:
+						ext = '.jpg'
+					elif 'png' in content_type:
+						ext = '.png'
+					elif 'heic' in content_type:
+						ext = '.heic'
+				
+				# Save to temp file
+				filename = f"photo_{i}{ext}"
+				filepath = os.path.join(product_temp_dir, filename)
+				with open(filepath, 'wb') as f:
+					f.write(img_response.content)
+				
+				downloaded_photos.append(os.path.abspath(filepath))
+				log_step(f"  Foto {i} gedownload: {filename}")
+			except Exception as e:
+				log_step(f"  [WARNING] Fout bij downloaden foto {i}: {e}")
+				continue
+		
+		return downloaded_photos
+	except Exception as e:
+		log_step(f"  [ERROR] Fout bij ophalen foto's van API: {e}")
+		return []
+
+
 async def upload_photos(page: Page, product: Product, media_root: str) -> None:
 	# Get photos from product, convert to absolute paths
 	photos: List[str] = []
 	
 	log_step(f"Foto's ophalen voor product (media_root: {media_root})")
 	
+	# First, try to download photos from API if photo_api_url is available
+	if product.photo_api_url:
+		import tempfile
+		temp_dir = tempfile.mkdtemp(prefix='marktplaats_photos_')
+		try:
+			api_photos = await download_photos_from_api(product.photo_api_url, product.article_number or 'temp', temp_dir)
+			if api_photos:
+				photos.extend(api_photos)
+				log_step(f"  {len(api_photos)} foto(s) gedownload van API")
+		except Exception as e:
+			log_step(f"  [WARNING] Fout bij downloaden van API: {e}")
+	
+	# Also check product.photos (for backwards compatibility)
 	if product.photos:
 		log_step(f"  Product heeft {len(product.photos)} foto path(s) in product.photos")
 		for i, p in enumerate(product.photos, 1):

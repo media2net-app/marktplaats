@@ -44,13 +44,28 @@ export default function LogsClient() {
       setLogs(data.logs || [])
       setError(null)
     } catch (err: any) {
-      const errorMsg = err.message || 'Failed to load logs'
+      // Try to get error details from response if available
+      let errorMsg = 'Failed to load logs'
+      let errorDetails = null
+      
+      if (err.message) {
+        errorMsg = err.message
+      }
+      
+      // If it's a network error, provide more context
+      if (err.message?.includes('fetch') || err.name === 'TypeError') {
+        errorMsg = 'Network error: Could not connect to server'
+        errorDetails = 'Check if the server is running and your internet connection is working.'
+      }
+      
       setError(errorMsg)
       console.error('Error fetching logs:', {
         message: err.message,
         details: err.details,
         status: err.status,
         type: err.type,
+        name: err.name,
+        fullError: err,
       })
     } finally {
       setLoading(false)

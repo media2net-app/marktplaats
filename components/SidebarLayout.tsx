@@ -16,7 +16,7 @@ interface SidebarLayoutProps {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
   { name: 'Producten', href: '/products' },
-  { name: 'Railway Logs', href: '/logs' },
+  { name: 'Logs', href: '/logs' },
 ]
 
 export default function SidebarLayout({ user, children }: SidebarLayoutProps) {

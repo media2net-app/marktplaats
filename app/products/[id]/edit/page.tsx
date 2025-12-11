@@ -33,10 +33,6 @@ export default async function EditProductPage({
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
     postedAt: product.postedAt ? product.postedAt.toISOString() : null,
-    ebayPostedAt: product.ebayPostedAt ? product.ebayPostedAt.toISOString() : null,
-    // Ensure categoryFields and ebayFields are properly serialized
-    categoryFields: product.categoryFields ? (typeof product.categoryFields === 'object' ? product.categoryFields : JSON.parse(product.categoryFields as any)) : null,
-    ebayFields: product.ebayFields ? (typeof product.ebayFields === 'object' ? product.ebayFields : JSON.parse(product.ebayFields as any)) : null,
   }
 
   return (

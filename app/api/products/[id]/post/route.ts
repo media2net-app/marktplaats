@@ -34,8 +34,8 @@ export async function POST(
     })
 
     // Get paths from environment
-    // Next.js now runs from project root
-    const projectRoot = process.cwd()
+    // webapp/ is current working directory, so go up one level to project root
+    const projectRoot = path.join(process.cwd(), '..')
     const scriptPath = process.env.PYTHON_SCRIPT_PATH || path.join(projectRoot, 'scripts', 'post_ads.py')
     const pythonCmd = process.env.PYTHON_CMD || 'python'
     
@@ -80,18 +80,30 @@ export async function POST(
         }
       )
 
-      console.log(`[POST] Script stdout: ${stdout}`)
+      console.log(`[POST] Script stdout (${stdout.length} chars): ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}`)
       if (stderr) {
-        console.log(`[POST] Script stderr: ${stderr}`)
+        console.log(`[POST] Script stderr (${stderr.length} chars): ${stderr.substring(0, 500)}${stderr.length > 500 ? '...' : ''}`)
       }
 
       // Check if script succeeded (look for success indicators in output)
       const output = stdout + stderr
-      const hasError = output.toLowerCase().includes('error') || 
-                       output.toLowerCase().includes('failed') ||
-                       output.toLowerCase().includes('exception')
+      console.log(`[POST] Checking output for success/error indicators...`)
+      
+      // Check for definitive success indicators
+      const hasResultJson = output.includes('RESULT_JSON:')
+      const hasSuccessMessage = output.includes('[OK] Succesvol verwerkt') || output.includes('✔ Succesvol verwerkt')
+      
+      // Only flag as error if there's a clear error AND no success indicators
+      // Be more specific about error patterns to avoid false positives
+      const hasCriticalError = (
+        output.toLowerCase().includes('traceback') ||
+        output.toLowerCase().includes('exception:') ||
+        output.toLowerCase().includes('error:') ||
+        (output.toLowerCase().includes('failed') && !output.toLowerCase().includes('status') && !output.toLowerCase().includes('failed to'))
+      )
 
-      if (hasError && !output.includes('✔ Succesvol verwerkt')) {
+      // If we have a critical error and no success indicators, mark as failed
+      if (hasCriticalError && !hasResultJson && !hasSuccessMessage) {
         // Script ran but had errors
         await prisma.product.update({
           where: { id: params.id },
@@ -107,14 +119,23 @@ export async function POST(
 
       // Try to extract result JSON from output
       let adStats: any = null
-      const resultMatch = output.match(/RESULT_JSON:({.+})/)
+      // Match RESULT_JSON: followed by JSON (handles multiline JSON)
+      const resultMatch = output.match(/RESULT_JSON:(\{[\s\S]*\})/)
       if (resultMatch) {
         try {
           adStats = JSON.parse(resultMatch[1])
+          console.log('[POST] Parsed RESULT_JSON:', adStats)
         } catch (e) {
-          console.error('Failed to parse result JSON:', e)
+          console.error('[POST] Failed to parse result JSON:', e)
+          console.error('[POST] JSON string:', resultMatch[1])
         }
+      } else {
+        console.log('[POST] No RESULT_JSON found in output')
       }
+
+      // Check if ad was actually posted successfully
+      const adUrl = adStats?.ad_url || null
+      const wasSuccessful = adUrl !== null && adUrl !== undefined
 
       // Parse posted_at date if available
       let postedAtDate: Date | null = null
@@ -125,28 +146,35 @@ export async function POST(
         postedAtDate = new Date()
       }
 
-      // Get Marktplaats account from environment
-      const marktplaatsAccount = process.env.MARKTPLAATS_EMAIL || null
-      
-      // Update product status to completed with stats
+      // Update product status based on whether ad was actually posted
+      const finalStatus = wasSuccessful ? 'completed' : 'failed'
       await prisma.product.update({
         where: { id: params.id },
         data: { 
-          status: 'completed',
-          marktplaatsUrl: adStats?.ad_url || null,
+          status: finalStatus,
+          marktplaatsUrl: adUrl,
           marktplaatsAdId: adStats?.ad_id || null,
-          marktplaatsAccount: marktplaatsAccount,
           views: adStats?.views || 0,
           saves: adStats?.saves || 0,
           postedAt: postedAtDate,
         },
       })
 
-      return NextResponse.json({ 
-        success: true,
-        message: 'Product succesvol geplaatst',
-        output: output,
-      })
+      if (wasSuccessful) {
+        return NextResponse.json({ 
+          success: true,
+          message: 'Product succesvol geplaatst',
+          output: output,
+          adUrl: adUrl,
+        })
+      } else {
+        return NextResponse.json({ 
+          success: false,
+          error: 'Advertentie kon niet worden geplaatst',
+          output: output,
+          details: adStats || { message: 'Geen RESULT_JSON gevonden in output' },
+        }, { status: 500 })
+      }
     } catch (execError: any) {
       console.error('[POST] Error executing script:', execError)
 

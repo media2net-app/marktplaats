@@ -25,10 +25,6 @@ export default async function ProductsPage() {
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
     postedAt: p.postedAt ? p.postedAt.toISOString() : null,
-    ebayPostedAt: p.ebayPostedAt ? p.ebayPostedAt.toISOString() : null,
-    // Ensure categoryFields and ebayFields are properly serialized (Prisma already parses JSON, but ensure they're objects)
-    categoryFields: p.categoryFields ? (typeof p.categoryFields === 'object' ? p.categoryFields : JSON.parse(p.categoryFields as any)) : null,
-    ebayFields: p.ebayFields ? (typeof p.ebayFields === 'object' ? p.ebayFields : JSON.parse(p.ebayFields as any)) : null,
   }))
 
   return (

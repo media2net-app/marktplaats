@@ -1,90 +1,102 @@
-import { writeFile, mkdir, readdir, unlink } from 'fs/promises'
-import { join } from 'path'
-import { existsSync } from 'fs'
-import { put, list, del } from '@vercel/blob'
+import { put, list, del, head } from '@vercel/blob'
+import path from 'path'
+import fs from 'fs'
 
-const MEDIA_DIR = join(process.cwd(), 'public', 'media')
-const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN
-const useBlob = Boolean(BLOB_TOKEN)
+const MEDIA_ROOT = process.env.MEDIA_ROOT || './public/media'
+const USE_BLOB_STORAGE = !!process.env.BLOB_READ_WRITE_TOKEN
 
 /**
- * Upload a file to either Vercel Blob (if configured) or local storage.
+ * Upload a file to storage (Vercel Blob or local filesystem)
  */
-export async function uploadFile(file: File, articleNumber: string, filename: string): Promise<{ path: string }> {
-  if (useBlob) {
-    const key = `${articleNumber}/${filename}`
-    const bytes = await file.arrayBuffer()
-    const { url } = await put(key, bytes, {
+export async function uploadFile(
+  file: File,
+  articleNumber: string,
+  filename: string
+): Promise<{ path: string; url?: string }> {
+  if (USE_BLOB_STORAGE) {
+    // Use Vercel Blob Storage
+    const blob = await put(filename, file, {
       access: 'public',
-      token: BLOB_TOKEN,
-      contentType: file.type || 'application/octet-stream',
+      addRandomSuffix: false,
     })
-    return { path: url }
-  }
-
-  const articleDir = join(MEDIA_DIR, articleNumber)
-  if (!existsSync(articleDir)) {
-    await mkdir(articleDir, { recursive: true })
-  }
-
-  const filePath = join(articleDir, filename)
-  const bytes = await file.arrayBuffer()
-  const buffer = Buffer.from(bytes)
-
-  await writeFile(filePath, buffer)
-
-  return {
-    path: `/media/${articleNumber}/${filename}`
+    return {
+      path: blob.url,
+      url: blob.url,
+    }
+  } else {
+    // Use local filesystem
+    const articleDir = path.join(MEDIA_ROOT, articleNumber)
+    await fs.promises.mkdir(articleDir, { recursive: true })
+    
+    const filePath = path.join(articleDir, filename)
+    const buffer = Buffer.from(await file.arrayBuffer())
+    await fs.promises.writeFile(filePath, buffer)
+    
+    // Return relative path for local storage
+    const relativePath = `/media/${articleNumber}/${filename}`
+    return {
+      path: relativePath,
+    }
   }
 }
 
 /**
- * List all files for a given article number as absolute URLs (blob) or public paths (local).
+ * List all files for an article number
  */
 export async function listFiles(articleNumber: string): Promise<string[]> {
-  if (useBlob) {
-    const result = await list({
-      prefix: `${articleNumber}/`,
-      token: BLOB_TOKEN,
-    })
-    return result.blobs.map(b => b.url)
-  }
-
-  const articleDir = join(MEDIA_DIR, articleNumber)
-
-  if (!existsSync(articleDir)) {
+  if (USE_BLOB_STORAGE) {
+    // List from Vercel Blob Storage
+    // Note: Vercel Blob doesn't have a direct way to list by prefix
+    // We'll need to store file metadata or use a different approach
+    // For now, return empty array - files should be tracked in database
     return []
-  }
-
-  try {
-    const files = await readdir(articleDir)
-    return files
-      .filter(file => {
-        const ext = file.toLowerCase()
-        return ext.endsWith('.jpg') || ext.endsWith('.jpeg') || ext.endsWith('.png') || ext.endsWith('.heic')
+  } else {
+    // List from local filesystem
+    const articleDir = path.join(MEDIA_ROOT, articleNumber)
+    
+    try {
+      const files = await fs.promises.readdir(articleDir)
+      const imageFiles = files.filter(file => {
+        const ext = path.extname(file).toLowerCase()
+        return ['.jpg', '.jpeg', '.png', '.heic'].includes(ext)
       })
-      .map(file => `/media/${articleNumber}/${file}`)
-  } catch (error) {
-    console.error('Error listing files:', error)
-    return []
+      
+      return imageFiles.map(file => `/media/${articleNumber}/${file}`)
+    } catch (error) {
+      // Directory doesn't exist or can't be read
+      return []
+    }
   }
 }
 
 /**
- * Delete a file from blob or local storage.
+ * Delete a file from storage
  */
-export async function deleteFile(imagePath: string, articleNumber?: string): Promise<void> {
-  if (useBlob) {
-    await del(imagePath, { token: BLOB_TOKEN })
-    return
-  }
-
-  if (!articleNumber) return
-
-  const filename = imagePath.split('/').pop() || ''
-  const filePath = join(MEDIA_DIR, articleNumber, filename)
-
-  if (existsSync(filePath)) {
-    await unlink(filePath)
+export async function deleteFile(
+  filePath: string,
+  articleNumber?: string
+): Promise<void> {
+  if (filePath.startsWith('http')) {
+    // Blob URL - delete from Vercel Blob
+    if (USE_BLOB_STORAGE) {
+      try {
+        await del(filePath)
+      } catch (error) {
+        // File might not exist, that's okay
+        console.warn('Error deleting blob file:', error)
+      }
+    }
+  } else {
+    // Local file path
+    const fullPath = filePath.startsWith('/')
+      ? path.join('./public', filePath)
+      : path.join(MEDIA_ROOT, articleNumber || '', filePath)
+    
+    try {
+      await fs.promises.unlink(fullPath)
+    } catch (error) {
+      // File might not exist, that's okay
+      console.warn('Error deleting local file:', error)
+    }
   }
 }

@@ -47,7 +47,6 @@ class Product:
 	total_surface: Optional[str] = None  # Deprecated: use category_fields instead
 	delivery_option: Optional[str] = None
 	category_fields: Optional[Dict] = None  # Category-specific fields from database
-	photo_api_url: Optional[str] = None  # API endpoint to fetch photo URLs
 
 
 def read_products_from_api(api_url: str) -> List[Product]:
@@ -56,40 +55,7 @@ def read_products_from_api(api_url: str) -> List[Product]:
 		raise ImportError("requests library is required for API mode. Install with: pip install requests")
 	
 	try:
-		# Get API key from environment variable (preferred) or URL query param (fallback)
-		import os
-		from dotenv import load_dotenv
-		load_dotenv()
-		api_key = os.getenv('INTERNAL_API_KEY')
-		
-		# If no API key in environment, try to extract from URL (for backwards compatibility)
-		if not api_key:
-			from urllib.parse import urlparse, parse_qs
-			parsed_url = urlparse(api_url)
-			query_params = parse_qs(parsed_url.query)
-			api_key = query_params.get('api_key', [None])[0]
-		
-		# Clean URL - remove api_key from query params to avoid exposing it
-		from urllib.parse import urlparse, urlencode, parse_qs
-		parsed_url = urlparse(api_url)
-		query_params = parse_qs(parsed_url.query)
-		clean_params = {k: v for k, v in query_params.items() if k != 'api_key'}
-		
-		if clean_params:
-			clean_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}?{urlencode(clean_params, doseq=True)}"
-		else:
-			clean_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
-		
-		# Prepare headers with API key
-		headers = {}
-		if api_key:
-			headers['x-api-key'] = api_key
-			print(f"Using API key from {'environment' if os.getenv('INTERNAL_API_KEY') else 'URL'}: {api_key[:10]}... (length: {len(api_key)})")
-		else:
-			print("⚠️ Warning: No API key found in environment or URL")
-		
-		print(f"Fetching products from: {clean_url}")
-		response = requests.get(clean_url, timeout=30, headers=headers)
+		response = requests.get(api_url, timeout=30)
 		response.raise_for_status()
 		data = response.json()
 		
@@ -117,7 +83,6 @@ def read_products_from_api(api_url: str) -> List[Product]:
 				total_surface=item.get('total_surface') or None,  # Keep for backward compatibility
 				delivery_option=item.get('delivery_option') or None,
 				category_fields=category_fields if isinstance(category_fields, dict) else {},
-				photo_api_url=item.get('photo_api_url') or None,  # API endpoint to fetch photos
 			)
 			products.append(product)
 		
@@ -245,9 +210,6 @@ async def choose_category(page: Page, category_path: Optional[str]) -> None:
 	
 	# Wait for category selection page to load
 	await page.wait_for_timeout(WAIT_MEDIUM)
-	
-	# Initialize found_in_suggestions before try block to avoid UnboundLocalError
-	found_in_suggestions = False
 	
 	# First, check if we're on the suggestions page (with radio buttons)
 	# If so, try to find the exact category in suggestions first
@@ -838,99 +800,12 @@ async def fill_category_fields(page: Page, category_fields: Dict) -> None:
 			continue
 
 
-async def download_photos_from_api(photo_api_url: str, article_number: str, temp_dir: str) -> List[str]:
-	"""Download photos from API URL and save to temporary directory."""
-	if not requests:
-		log_step("  [WARNING] requests library not available, cannot download photos from API")
-		return []
-	
-	try:
-		# Get API key from environment
-		api_key = os.getenv('INTERNAL_API_KEY')
-		
-		# Prepare headers
-		headers = {}
-		if api_key:
-			headers['x-api-key'] = api_key
-		
-		log_step(f"  Foto's ophalen van API: {photo_api_url}")
-		response = requests.get(photo_api_url, headers=headers, timeout=30)
-		response.raise_for_status()
-		
-		data = response.json()
-		image_urls = data.get('images', [])
-		
-		if not image_urls:
-			log_step("  Geen foto's gevonden in API response")
-			return []
-		
-		log_step(f"  {len(image_urls)} foto URL(s) gevonden, downloaden...")
-		
-		# Create temp directory for this product
-		product_temp_dir = os.path.join(temp_dir, article_number or 'temp')
-		os.makedirs(product_temp_dir, exist_ok=True)
-		
-		downloaded_photos = []
-		for i, image_url in enumerate(image_urls, 1):
-			try:
-				# Download image
-				img_response = requests.get(image_url, timeout=30)
-				img_response.raise_for_status()
-				
-				# Determine file extension from URL or content type
-				ext = '.jpg'  # default
-				if '.jpg' in image_url.lower() or '.jpeg' in image_url.lower():
-					ext = '.jpg'
-				elif '.png' in image_url.lower():
-					ext = '.png'
-				elif '.heic' in image_url.lower():
-					ext = '.heic'
-				elif img_response.headers.get('content-type'):
-					content_type = img_response.headers['content-type']
-					if 'jpeg' in content_type or 'jpg' in content_type:
-						ext = '.jpg'
-					elif 'png' in content_type:
-						ext = '.png'
-					elif 'heic' in content_type:
-						ext = '.heic'
-				
-				# Save to temp file
-				filename = f"photo_{i}{ext}"
-				filepath = os.path.join(product_temp_dir, filename)
-				with open(filepath, 'wb') as f:
-					f.write(img_response.content)
-				
-				downloaded_photos.append(os.path.abspath(filepath))
-				log_step(f"  Foto {i} gedownload: {filename}")
-			except Exception as e:
-				log_step(f"  [WARNING] Fout bij downloaden foto {i}: {e}")
-				continue
-		
-		return downloaded_photos
-	except Exception as e:
-		log_step(f"  [ERROR] Fout bij ophalen foto's van API: {e}")
-		return []
-
-
 async def upload_photos(page: Page, product: Product, media_root: str) -> None:
 	# Get photos from product, convert to absolute paths
 	photos: List[str] = []
 	
 	log_step(f"Foto's ophalen voor product (media_root: {media_root})")
 	
-	# First, try to download photos from API if photo_api_url is available
-	if product.photo_api_url:
-		import tempfile
-		temp_dir = tempfile.mkdtemp(prefix='marktplaats_photos_')
-		try:
-			api_photos = await download_photos_from_api(product.photo_api_url, product.article_number or 'temp', temp_dir)
-			if api_photos:
-				photos.extend(api_photos)
-				log_step(f"  {len(api_photos)} foto(s) gedownload van API")
-		except Exception as e:
-			log_step(f"  [WARNING] Fout bij downloaden van API: {e}")
-	
-	# Also check product.photos (for backwards compatibility)
 	if product.photos:
 		log_step(f"  Product heeft {len(product.photos)} foto path(s) in product.photos")
 		for i, p in enumerate(product.photos, 1):
@@ -1214,23 +1089,45 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 
 	os.makedirs(user_data_dir, exist_ok=True)
 
-	# Detect headless mode from environment variable
-	# Default to False (visible) for local development, True for servers
-	headless_env = os.getenv('PLAYWRIGHT_HEADLESS', '').lower()
-	if headless_env == '':
-		# Auto-detect: if no DISPLAY and CI/server environment, use headless
-		is_server = not os.getenv('DISPLAY') and (os.getenv('CI') or os.getenv('RAILWAY_ENVIRONMENT') or os.getenv('RENDER'))
-		headless = is_server
-	else:
-		headless = headless_env == 'true'
+	# Determine if we should run headless
+	# Run headless if: explicitly set, in CI/serverless environment, or no DISPLAY
+	headless_env = os.getenv('HEADLESS', '').lower()
+	has_display = os.getenv('DISPLAY') is not None
+	is_ci = os.getenv('CI') is not None or os.getenv('VERCEL') is not None
+	should_be_headless = (
+		headless_env in ('1', 'true', 'yes', 'on') or
+		not has_display or
+		is_ci
+	)
+	
+	# Allow override via environment variable
+	if headless_env in ('0', 'false', 'no', 'off'):
+		should_be_headless = False
+	
+	print(f"[DEBUG] Headless mode: {should_be_headless} (HEADLESS={headless_env}, DISPLAY={has_display}, CI={is_ci})")
 
 	async with async_playwright() as p:
-		browser = await p.chromium.launch_persistent_context(
-			user_data_dir=user_data_dir,
-			headless=headless,
-			viewport={"width": 1280, "height": 900},
-			args=["--disable-blink-features=AutomationControlled"],
-		)
+		try:
+			browser = await p.chromium.launch_persistent_context(
+				user_data_dir=user_data_dir,
+				headless=should_be_headless,
+				viewport={"width": 1280, "height": 900},
+				args=["--disable-blink-features=AutomationControlled"],
+			)
+		except Exception as e:
+			print(f"[ERROR] Failed to launch browser: {e}")
+			print(f"[ERROR] Trying with headless=True as fallback...")
+			try:
+				browser = await p.chromium.launch_persistent_context(
+					user_data_dir=user_data_dir,
+					headless=True,
+					viewport={"width": 1280, "height": 900},
+					args=["--disable-blink-features=AutomationControlled"],
+				)
+				print("[OK] Browser launched in headless mode (fallback)")
+			except Exception as e2:
+				print(f"[ERROR] Failed to launch browser even in headless mode: {e2}")
+				raise
 		page = await browser.new_page()
 		# Set default timeouts (shorter in fast mode)
 		nav_timeout = 30000 if FAST_MODE else 60000
@@ -1259,120 +1156,142 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 		
 		all_results = []
 		for index, product in enumerate(products, start=1):
-			print(f"Posting {index}/{len(products)}: {product.title}")
-			await click_place_ad(page, base_url)
-			
-			# Use category_path if available, otherwise use auto-suggest
-			if product.category_path:
-				log_step(f"Gebruik categorie uit product: {product.category_path}")
-				# Fill title first (needed for category selection on some pages)
-				try:
-					title_input = page.get_by_label("Titel", exact=False)
-					if await title_input.count() == 0:
-						title_input = page.get_by_placeholder("Titel", exact=False)
-					if await title_input.count() > 0:
-						value = await title_input.first.input_value()
-						if not value:
-							await title_input.first.fill(product.title)
-							await page.wait_for_timeout(WAIT_SHORT)
-				except Exception:
-					pass
+			try:
+				print(f"Posting {index}/{len(products)}: {product.title}")
+				await click_place_ad(page, base_url)
 				
-				# Navigate to category selection
-				try:
-					find_button = page.get_by_role("button", name="Vind categorie")
-					if await find_button.count() == 0:
-						find_button = page.locator("[data-testid='findCategory']")
-					if await find_button.count() > 0:
-						await find_button.first.click()
-						await page.wait_for_timeout(WAIT_MEDIUM)
-				except Exception as e:
-					log_step(f"Waarschuwing: Kon 'Vind categorie' niet vinden: {e}")
-				
-				# Now choose the specific category
-				await choose_category(page, product.category_path)
-				
-				# Click "Verder" if needed
-				try:
-					next_button = page.get_by_role("button", name="Verder")
-					if await next_button.count() > 0:
-						await next_button.first.click()
-						await page.wait_for_load_state("domcontentloaded")
-						await page.wait_for_timeout(WAIT_SHORT)
-				except Exception:
-					pass
-			else:
-				log_step("Geen categorie opgegeven, gebruik auto-suggest")
-				await auto_suggest_category(page, product.title)
-			
-			await fill_basic_fields(page, product)
-			await upload_photos(page, product, media_root)
-			await select_free_bundle(page)
-			ad_url = await publish_ad(page)
-			
-			# Scrape stats if ad was posted successfully
-			ad_stats = None
-			if ad_url:
-				print(f"Ad posted at: {ad_url}")
-				print("Scraping ad statistics...")
-				
-				# Try to scrape from individual ad page first
-				ad_stats = await scrape_ad_stats(page, ad_url)
-				
-				# If that fails or doesn't get all data, try user page
-				if not ad_stats or not ad_stats.get('ad_id'):
+				# Use category_path if available, otherwise use auto-suggest
+				if product.category_path:
+					log_step(f"Gebruik categorie uit product: {product.category_path}")
+					# Fill title first (needed for category selection on some pages)
 					try:
-						from scrape_user_ads import get_user_url_from_ad, scrape_user_ads
-						user_url = await get_user_url_from_ad(page, ad_url)
-						if user_url:
-							print(f"Found user page: {user_url}")
-							print("Scraping all ads from user page...")
-							user_ads = await scrape_user_ads(page, user_url)
-							
-							# Find matching ad by article number or title
-							for user_ad in user_ads:
-								if user_ad.get('ad_id') and product.article_number:
-									# Try to match by checking if article number might be in title or URL
-									if product.article_number in (user_ad.get('title', '') or ''):
+						title_input = page.get_by_label("Titel", exact=False)
+						if await title_input.count() == 0:
+							title_input = page.get_by_placeholder("Titel", exact=False)
+						if await title_input.count() > 0:
+							value = await title_input.first.input_value()
+							if not value:
+								await title_input.first.fill(product.title)
+								await page.wait_for_timeout(WAIT_SHORT)
+					except Exception:
+						pass
+					
+					# Navigate to category selection
+					try:
+						find_button = page.get_by_role("button", name="Vind categorie")
+						if await find_button.count() == 0:
+							find_button = page.locator("[data-testid='findCategory']")
+						if await find_button.count() > 0:
+							await find_button.first.click()
+							await page.wait_for_timeout(WAIT_MEDIUM)
+					except Exception as e:
+						log_step(f"Waarschuwing: Kon 'Vind categorie' niet vinden: {e}")
+					
+					# Now choose the specific category
+					await choose_category(page, product.category_path)
+					
+					# Click "Verder" if needed
+					try:
+						next_button = page.get_by_role("button", name="Verder")
+						if await next_button.count() > 0:
+							await next_button.first.click()
+							await page.wait_for_load_state("domcontentloaded")
+							await page.wait_for_timeout(WAIT_SHORT)
+					except Exception:
+						pass
+				else:
+					log_step("Geen categorie opgegeven, gebruik auto-suggest")
+					await auto_suggest_category(page, product.title)
+				
+				await fill_basic_fields(page, product)
+				await upload_photos(page, product, media_root)
+				await select_free_bundle(page)
+				ad_url = await publish_ad(page)
+				
+				# Scrape stats if ad was posted successfully
+				ad_stats = None
+				if ad_url:
+					print(f"Ad posted at: {ad_url}")
+					print("Scraping ad statistics...")
+					
+					# Try to scrape from individual ad page first
+					ad_stats = await scrape_ad_stats(page, ad_url)
+					
+					# If that fails or doesn't get all data, try user page
+					if not ad_stats or not ad_stats.get('ad_id'):
+						try:
+							from scrape_user_ads import get_user_url_from_ad, scrape_user_ads
+							user_url = await get_user_url_from_ad(page, ad_url)
+							if user_url:
+								print(f"Found user page: {user_url}")
+								print("Scraping all ads from user page...")
+								user_ads = await scrape_user_ads(page, user_url)
+								
+								# Find matching ad by article number or title
+								for user_ad in user_ads:
+									if user_ad.get('ad_id') and product.article_number:
+										# Try to match by checking if article number might be in title or URL
+										if product.article_number in (user_ad.get('title', '') or ''):
+											ad_stats = user_ad
+											break
+									elif user_ad.get('ad_url') == ad_url:
 										ad_stats = user_ad
 										break
-								elif user_ad.get('ad_url') == ad_url:
-									ad_stats = user_ad
-									break
-					except Exception as e:
-						print(f"Fout bij scrapen user page: {e}")
+						except Exception as e:
+							print(f"Fout bij scrapen user page: {e}")
+					
+					if ad_stats:
+						print(f"Stats scraped: Ad ID={ad_stats.get('ad_id')}, Views={ad_stats.get('views')}, Saves={ad_stats.get('saves')}")
 				
-				if ad_stats:
-					print(f"Stats scraped: Ad ID={ad_stats.get('ad_id')}, Views={ad_stats.get('views')}, Saves={ad_stats.get('saves')}")
-			
-			await page.wait_for_timeout(action_delay_ms)
-			print(f"[OK] Succesvol verwerkt: {product.title}")
-			
-			# Get Marktplaats account email from environment (used for posting)
-			marktplaats_account = os.getenv('MARKTPLAATS_EMAIL') or 'Onbekend'
-			
-			# Store result for API mode
-			product_result = {
-				'ad_url': ad_url,
-				'ad_id': ad_stats.get('ad_id') if ad_stats else None,
-				'views': ad_stats.get('views', 0) if ad_stats else 0,
-				'saves': ad_stats.get('saves', 0) if ad_stats else 0,
-				'posted_at': ad_stats.get('posted_at') if ad_stats else None,
-				'article_number': product.article_number,
-				'title': product.title,
-				'status': 'completed' if ad_url else 'failed',
-				'marktplaats_account': marktplaats_account,
-			}
-			
-			# For single product mode (has product_id), return immediately
-			if product_id:
-				import json
-				print(f"RESULT_JSON:{json.dumps(product_result)}")
+				await page.wait_for_timeout(action_delay_ms)
+				print(f"[OK] Succesvol verwerkt: {product.title}")
+				
+				# Store result for API mode
+				product_result = {
+					'ad_url': ad_url,
+					'ad_id': ad_stats.get('ad_id') if ad_stats else None,
+					'views': ad_stats.get('views', 0) if ad_stats else 0,
+					'saves': ad_stats.get('saves', 0) if ad_stats else 0,
+					'posted_at': ad_stats.get('posted_at') if ad_stats else None,
+					'article_number': product.article_number,
+					'title': product.title,
+					'status': 'completed' if ad_url else 'failed',
+				}
+				
+				# For single product mode (has product_id), return immediately
+				if product_id:
+					import json
+					print(f"RESULT_JSON:{json.dumps(product_result)}")
+					all_results.append(product_result)
+					break
+				
+				# For batch mode, collect results
 				all_results.append(product_result)
-				break
-			
-			# For batch mode, collect results
-			all_results.append(product_result)
+			except Exception as e:
+				print(f"[ERROR] Fout bij plaatsen product {index}/{len(products)} ({product.title}): {e}")
+				import traceback
+				traceback.print_exc()
+				# Store failed result
+				failed_result = {
+					'ad_url': None,
+					'ad_id': None,
+					'views': 0,
+					'saves': 0,
+					'posted_at': None,
+					'article_number': product.article_number,
+					'title': product.title,
+					'status': 'failed',
+					'error': str(e),
+				}
+				if product_id:
+					import json
+					print(f"RESULT_JSON:{json.dumps(failed_result)}")
+					all_results.append(failed_result)
+					break
+				else:
+					all_results.append(failed_result)
+				# Continue with next product in batch mode
+				continue
 
 		print("Done.")
 		if keep_open:

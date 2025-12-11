@@ -44,17 +44,39 @@ export async function uploadFile(
  * List all files for an article number
  */
 export async function listFiles(articleNumber: string): Promise<string[]> {
+  if (!articleNumber) {
+    return []
+  }
+  
   if (USE_BLOB_STORAGE) {
     // List from Vercel Blob Storage
     // Note: Vercel Blob doesn't have a direct way to list by prefix
     // We'll need to store file metadata or use a different approach
     // For now, return empty array - files should be tracked in database
-    return []
+    try {
+      // Try to list blobs with prefix (if articleNumber is used as prefix)
+      const { list } = await import('@vercel/blob')
+      const blobs = await list({ prefix: articleNumber })
+      return blobs.blobs.map(blob => blob.url)
+    } catch (error) {
+      console.error('Error listing blobs:', error)
+      return []
+    }
   } else {
     // List from local filesystem
     const articleDir = path.join(MEDIA_ROOT, articleNumber)
     
     try {
+      // Check if MEDIA_ROOT exists
+      if (!fs.existsSync(MEDIA_ROOT)) {
+        return []
+      }
+      
+      // Check if article directory exists
+      if (!fs.existsSync(articleDir)) {
+        return []
+      }
+      
       const files = await fs.promises.readdir(articleDir)
       const imageFiles = files.filter(file => {
         const ext = path.extname(file).toLowerCase()
@@ -64,6 +86,7 @@ export async function listFiles(articleNumber: string): Promise<string[]> {
       return imageFiles.map(file => `/media/${articleNumber}/${file}`)
     } catch (error) {
       // Directory doesn't exist or can't be read
+      console.error('Error listing local files:', error)
       return []
     }
   }

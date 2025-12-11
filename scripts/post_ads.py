@@ -154,6 +154,24 @@ async def ensure_logged_in(page: Page, base_url: str) -> None:
 			await accept.first.click()
 	except Exception:
 		pass
+	
+	# Check if logged in and log account info
+	try:
+		# Try to find user menu or account indicator
+		user_menu = page.locator("[data-testid='user-menu'], [aria-label*='account'], [aria-label*='profiel']").first
+		if await user_menu.count() > 0:
+			user_text = await user_menu.text_content()
+			log_step(f"Gebruiker ingelogd: {user_text}")
+		else:
+			# Try to find email or username in page
+			email_elem = page.locator("text=/@.*\\./").first
+			if await email_elem.count() > 0:
+				email = await email_elem.text_content()
+				log_step(f"Gebruiker ingelogd: {email}")
+			else:
+				log_step("Waarschuwing: Kan niet bepalen welk account is ingelogd")
+	except Exception as e:
+		log_step(f"Kon account info niet ophalen: {e}")
 
 
 async def click_place_ad(page: Page, base_url: str) -> None:
@@ -966,39 +984,92 @@ async def get_posted_ad_url(page: Page) -> Optional[str]:
 	"""Extract the URL of the posted ad from the current page."""
 	try:
 		# Wait a bit for redirect or page load (shorter in fast mode)
-		await page.wait_for_timeout(1500 if FAST_MODE else 3000)
+		await page.wait_for_timeout(2000 if FAST_MODE else 4000)
 		
 		# Check current URL - if it's an ad page, return it
 		current_url = page.url
-		if '/v/' in current_url or '/a' in current_url:
+		log_step(f"Current URL na plaatsen: {current_url}")
+		
+		# Filter out help/terms pages
+		if '/help/' in current_url or '/voorwaarden' in current_url or '/privacy' in current_url:
+			log_step(f"Waarschuwing: Op help/voorwaarden pagina, niet op ad pagina")
+		elif '/v/' in current_url or '/a' in current_url:
+			log_step(f"Ad URL gevonden in current URL: {current_url}")
 			return current_url
 		
-		# Try to find a link to the ad
+		# Try to find "Bekijk je advertentie" link first (most reliable)
+		view_ad_texts = [
+			"Bekijk je advertentie",
+			"Bekijk advertentie",
+			"Naar je advertentie",
+			"Je advertentie bekijken"
+		]
+		for text in view_ad_texts:
+			try:
+				view_ad_link = page.get_by_text(text, exact=False)
+				if await view_ad_link.count() > 0:
+					# Try to find href in parent or self
+					parent = view_ad_link.first.locator("..")
+					href = await parent.get_attribute('href')
+					if not href:
+						# Try as link itself
+						href = await view_ad_link.first.get_attribute('href')
+					if href and ('/v/' in href or '/a' in href):
+						if href.startswith('http'):
+							log_step(f"Ad URL gevonden via '{text}': {href}")
+							return href
+						else:
+							base_url = os.getenv('MARKTPLAATS_BASE_URL', 'https://www.marktplaats.nl')
+							full_url = f"{base_url}{href}"
+							log_step(f"Ad URL gevonden via '{text}': {full_url}")
+							return full_url
+			except Exception:
+				continue
+		
+		# Try to find ad links (but exclude help/terms links)
 		ad_link = page.locator("a[href*='/v/'], a[href*='/a']").first
 		if await ad_link.count() > 0:
 			href = await ad_link.get_attribute('href')
-			if href:
+			if href and '/help/' not in href and '/voorwaarden' not in href and '/privacy' not in href:
 				if href.startswith('http'):
+					log_step(f"Ad URL gevonden via link: {href}")
 					return href
 				else:
 					base_url = os.getenv('MARKTPLAATS_BASE_URL', 'https://www.marktplaats.nl')
-					return f"{base_url}{href}"
+					full_url = f"{base_url}{href}"
+					log_step(f"Ad URL gevonden via link: {full_url}")
+					return full_url
 		
-		# Try to find "Bekijk je advertentie" link
-		view_ad_link = page.get_by_text("Bekijk je advertentie", exact=False)
-		if await view_ad_link.count() > 0:
-			parent = view_ad_link.first.locator("..")
-			href = await parent.get_attribute('href')
-			if href:
-				if href.startswith('http'):
-					return href
-				else:
-					base_url = os.getenv('MARKTPLAATS_BASE_URL', 'https://www.marktplaats.nl')
-					return f"{base_url}{href}"
+		# Try to find success message and extract URL from it
+		success_messages = [
+			"Je advertentie is geplaatst",
+			"Advertentie geplaatst",
+			"Succesvol geplaatst"
+		]
+		for msg in success_messages:
+			try:
+				success_elem = page.get_by_text(msg, exact=False)
+				if await success_elem.count() > 0:
+					# Look for nearby links
+					parent = success_elem.first.locator("..")
+					link = parent.locator("a[href*='/v/'], a[href*='/a']").first
+					if await link.count() > 0:
+						href = await link.get_attribute('href')
+						if href and '/help/' not in href:
+							if href.startswith('http'):
+								return href
+							else:
+								base_url = os.getenv('MARKTPLAATS_BASE_URL', 'https://www.marktplaats.nl')
+								return f"{base_url}{href}"
+			except Exception:
+				continue
 		
+		log_step(f"Waarschuwing: Kon geen ad URL vinden op pagina")
 		return None
 	except Exception as e:
 		print(f"Error getting ad URL: {e}")
+		import traceback
+		traceback.print_exc()
 		return None
 
 

@@ -26,10 +26,6 @@ webapp/.next/
 webapp/out/
 webapp/build/
 webapp/dist/
-.next/
-out/
-build/
-dist/
 
 # Database
 *.db

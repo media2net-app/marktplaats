@@ -22,29 +22,11 @@ export async function GET(request: NextRequest) {
       // Session check failed, try API key
     }
     
-    // Validate API key if no session (trim whitespace for comparison)
-    const isApiKeyValid = apiKey && validApiKey && (apiKey.trim() === validApiKey.trim())
-    
-    console.log('[PENDING API] Auth check:', {
-      hasSession: !!session_user,
-      hasApiKey: !!apiKey,
-      apiKeyLength: apiKey?.length,
-      validApiKeyLength: validApiKey?.length,
-      isApiKeyValid,
-      apiKeyMatch: apiKey?.trim() === validApiKey?.trim(),
-    })
+    // Validate API key if no session
+    const isApiKeyValid = apiKey && (apiKey === validApiKey)
     
     if (!session_user && !isApiKeyValid) {
-      console.error('[PENDING API] Unauthorized:', {
-        hasSession: !!session_user,
-        hasApiKey: !!apiKey,
-        apiKeyProvided: apiKey?.substring(0, 10) + '...',
-        validApiKeyExpected: validApiKey?.substring(0, 10) + '...',
-      })
-      return NextResponse.json({ 
-        error: 'Unauthorized',
-        message: 'Invalid API key or session required',
-      }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Get user ID from session or use a default (for API key mode, get first user or all)
@@ -52,13 +34,13 @@ export async function GET(request: NextRequest) {
     if (session_user) {
       userId = session_user.user.id
     } else if (isApiKeyValid) {
-      // For API key mode: allow user_id parameter, or return all pending products
-      const requestedUserId = request.nextUrl.searchParams.get('user_id')
-      if (requestedUserId) {
-        userId = requestedUserId
+      // For API key mode, get the first user's products (or you could pass user_id as param)
+      // In a multi-user system, you'd want to pass user_id as a parameter
+      const firstUser = await prisma.user.findFirst()
+      if (firstUser) {
+        userId = firstUser.id
       } else {
-        // No user_id specified with API key: return ALL pending products (for batch processing)
-        userId = null // null means no user filter
+        return NextResponse.json({ error: 'No users found' }, { status: 404 })
       }
     } else {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -66,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     const products = await prisma.product.findMany({
       where: { 
-        ...(userId ? { userId: userId } : {}), // Only filter by userId if specified
+        userId: userId,
         status: 'pending',
       },
       include: {
@@ -76,45 +58,22 @@ export async function GET(request: NextRequest) {
     })
 
     // Format products for Python script compatibility
-    // Include photo URLs for remote access
-    const baseUrl = process.env.NEXTAUTH_URL 
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null)
-      || 'http://localhost:3000'
-    
-    // Use the valid API key for photo_api_url (not the one from request, which might be different)
-    const photoApiKey = validApiKey
-    
-    const exportData = products.map(product => {
-      // Get photo URLs from API
-      const photoUrls: string[] = []
-      // Photos will be downloaded from /api/products/[id]/images endpoint
-      // For now, we'll include the product ID so the script can fetch images
-      
-      // Get category path - use the category that is set for the product
-      let categoryPath: string | null = null
-      if (product.category) {
-        categoryPath = product.category.path
-        console.log(`Product ${product.id} (${product.title}) has category: ${categoryPath}`)
-      } else {
-        console.log(`Product ${product.id} (${product.title}) has NO category set`)
-      }
-      
-      return {
-        id: product.id,
-        title: product.title,
-        description: product.description,
-        price: product.price.toString(),
-        location: product.location || '',
-        photos: photoUrls, // Will be populated by script via API
-        photo_api_url: `${baseUrl}/api/products/${product.id}/images?api_key=${photoApiKey}`, // API endpoint to get photo URLs
-        article_number: product.articleNumber,
-        condition: product.condition || 'Gebruikt',
-        delivery_methods: [],
-        delivery_option: product.deliveryOption || 'Ophalen of Verzenden',
-        category_path: categoryPath, // Use the category that was set for the product
-        category_fields: product.categoryFields || {}, // Include category-specific fields
-      }
-    })
+    const exportData = products.map(product => ({
+      id: product.id,
+      title: product.title,
+      description: product.description,
+      price: product.price.toString(),
+      location: product.location || '',
+      photos: [], // Photos are found via article_number in media folder
+      article_number: product.articleNumber,
+      condition: product.condition || 'Gebruikt',
+      delivery_methods: [],
+      material: product.material || '',
+      thickness: product.thickness || '',
+      total_surface: product.totalSurface || '',
+      delivery_option: product.deliveryOption || 'Ophalen of Verzenden',
+      category_path: product.category?.path || null,
+    }))
 
     return NextResponse.json(exportData)
   } catch (error) {

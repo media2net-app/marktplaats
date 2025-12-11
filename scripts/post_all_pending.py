@@ -8,84 +8,16 @@ import sys
 import requests
 from dotenv import load_dotenv
 
-# Fix Windows console encoding for emoji support
-if sys.platform == 'win32':
-	try:
-		sys.stdout.reconfigure(encoding='utf-8')
-	except:
-		pass
-
 # Add scripts directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 from post_ads import run
 
 async def main():
-	# Find .env file - look in script directory and parent directory
-	script_dir = os.path.dirname(os.path.abspath(__file__))
-	parent_dir = os.path.dirname(script_dir)
-	env_paths = [
-		os.path.join(parent_dir, '.env'),  # .env in root (where run_marktplaats.bat is)
-		os.path.join(script_dir, '.env'),   # .env in scripts folder
-		os.path.join(os.getcwd(), '.env'),  # .env in current working directory
-	]
-	
-	env_loaded = False
-	loaded_from = None
-	for env_path in env_paths:
-		if os.path.exists(env_path):
-			load_dotenv(env_path, override=True)
-			env_loaded = True
-			loaded_from = env_path
-			print(f"[DEBUG] .env geladen van: {env_path}")
-			break
-	
-	# If no .env found, try default location
-	if not env_loaded:
-		load_dotenv(override=True)
-		print("[DEBUG] Geen .env bestand gevonden op verwachte locaties:")
-		for env_path in env_paths:
-			print(f"  - {env_path} {'✓' if os.path.exists(env_path) else '✗ (niet gevonden)'}")
-		print("[DEBUG] Probeer default load_dotenv()...")
+	load_dotenv(override=True)
 	
 	# Get API URL from environment or use default
-	nextauth_url = os.getenv('NEXTAUTH_URL')
-	api_base_url = os.getenv('API_BASE_URL')
-	base_url = nextauth_url or api_base_url or 'http://localhost:3000'
+	base_url = os.getenv('NEXTAUTH_URL') or os.getenv('API_BASE_URL') or 'http://localhost:3000'
 	api_key = os.getenv('INTERNAL_API_KEY') or 'internal-key-change-in-production'
-	
-	# Always show debug output to help troubleshoot
-	print(f"[DEBUG] NEXTAUTH_URL uit .env: {nextauth_url}")
-	print(f"[DEBUG] API_BASE_URL uit .env: {api_base_url}")
-	print(f"[DEBUG] base_url (gebruikt): {base_url}")
-	print(f"[DEBUG] INTERNAL_API_KEY aanwezig: {'Ja' if api_key != 'internal-key-change-in-production' else 'Nee (gebruikt default)'}")
-	print()
-	
-	# Check if still using localhost (development)
-	if 'localhost' in base_url or '127.0.0.1' in base_url:
-		print("=" * 70)
-		print("WAARSCHUWING: Je gebruikt nog localhost!")
-		print("=" * 70)
-		print(f"Huidige URL: {base_url}")
-		print()
-		print("Dit script werkt alleen met een LIVE productie URL!")
-		print()
-		print("STAP 1: Open het .env bestand in deze map")
-		print("STAP 2: Pas de volgende regels aan:")
-		print("   NEXTAUTH_URL=https://jouw-domein.vercel.app")
-		print("   API_BASE_URL=https://jouw-domein.vercel.app")
-		print("   INTERNAL_API_KEY=jouw-api-key")
-		print()
-		print("STAP 3: Vervang 'jouw-domein.vercel.app' door je echte Vercel URL")
-		print("        (bijvoorbeeld: https://marktplaats-eight.vercel.app)")
-		print()
-		print("STAP 4: Vervang 'jouw-api-key' door je echte INTERNAL_API_KEY")
-		print("        (deze staat in je Vercel environment variables)")
-		print()
-		print("=" * 70)
-		print("SCRIPT GESTOPT - Pas eerst je .env bestand aan!")
-		print("=" * 70)
-		input("\nDruk op Enter om af te sluiten...")
-		sys.exit(1)
 	
 	# Use the pending products endpoint
 	api_url = f"{base_url}/api/products/pending?api_key={api_key}"

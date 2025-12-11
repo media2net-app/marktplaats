@@ -4,7 +4,7 @@ import { compare } from 'bcryptjs'
 import { prisma } from './prisma'
 
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-change-in-production',
   providers: [
     CredentialsProvider({
       name: 'Credentials',
@@ -21,10 +21,10 @@ export const authOptions: NextAuthOptions = {
 
           console.log('[AUTH] Attempting login for:', credentials.email)
           
-          // Ensure DATABASE_URL is set
+          // Check if DATABASE_URL is set (required for production)
           if (!process.env.DATABASE_URL) {
-            process.env.DATABASE_URL = 'file:./dev.db'
-            console.log('[AUTH] Set DATABASE_URL to default')
+            console.error('[AUTH] DATABASE_URL is not set! This is required for production.')
+            throw new Error('Database not configured. Please set DATABASE_URL environment variable.')
           }
           
           const user = await prisma.user.findUnique({

@@ -1,9 +1,21 @@
 import NextAuth from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-// Ensure DATABASE_URL is set before initializing auth
+// Validate required environment variables
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'file:./dev.db'
+  console.error('[NEXTAUTH] ERROR: DATABASE_URL is not set!')
+  console.error('[NEXTAUTH] This is required for the app to work.')
+  console.error('[NEXTAUTH] Please set DATABASE_URL in Vercel environment variables.')
+}
+
+if (!process.env.NEXTAUTH_SECRET) {
+  console.warn('[NEXTAUTH] WARNING: NEXTAUTH_SECRET is not set!')
+  console.warn('[NEXTAUTH] Using fallback secret. This is not secure for production!')
+}
+
+if (!process.env.NEXTAUTH_URL) {
+  console.warn('[NEXTAUTH] WARNING: NEXTAUTH_URL is not set!')
+  console.warn('[NEXTAUTH] This may cause authentication issues.')
 }
 
 const handler = NextAuth(authOptions)

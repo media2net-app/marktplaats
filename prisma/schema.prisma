@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -26,9 +26,6 @@ model Category {
   children  Category[] @relation("CategoryTree")
   path      String   // Volledige pad zoals "Huis en Inrichting > Banken"
   marktplaatsId String? // ID zoals gebruikt door Marktplaats
-  fields    Json?    // Marktplaats categorie-specifieke velden (definitie)
-  ebayCategoryId String? // eBay category ID
-  ebayFields Json?   // eBay categorie-specifieke velden (Item Specifics definitie)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   products  Product[]
@@ -46,24 +43,14 @@ model Product {
   totalSurface  String?
   deliveryOption String?
   location      String?
-  manufacturerName String? // Handelsnaam fabrikant
-  manufacturerAddress String? // Postadres fabrikant
-  manufacturerEmail String? // E-mailadres fabrikant
   status        String   @default("pending") // pending, processing, completed, failed
   marktplaatsUrl String?
   marktplaatsAdId String? // Advertentienummer (bijv. a1519860984)
-  marktplaatsAccount String? // Marktplaats account email/username waarmee geplaatst
-  ebayItemId    String?  // eBay item ID
-  ebayListingId String?  // eBay listing ID
   views         Int      @default(0) // Aantal keer bekeken
   saves         Int      @default(0) // Aantal keer opgeslagen
   postedAt      DateTime? // Datum waarop geplaatst op Marktplaats
-  ebayPostedAt  DateTime? // Datum waarop geplaatst op eBay
   categoryId    String?
   category      Category? @relation(fields: [categoryId], references: [id])
-  categoryFields Json?   // Marktplaats categorie-specifieke velden (waarden)
-  ebayFields    Json?    // eBay categorie-specifieke velden (Item Specifics waarden)
-  platforms     String[] @default(["marktplaats"]) // Array van platforms: ["marktplaats", "ebay"]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   userId        String

@@ -1,252 +1,127 @@
-# Railway Deployment - Marktplaats Posting Worker
+# Railway Setup voor Marktplaats Automator
 
-Deze gids helpt je om de Marktplaats posting worker op Railway te deployen.
+Railway is ideaal voor het draaien van het Python script omdat het:
+- Persistent storage ondersteunt (user_data_dir blijft behouden)
+- Headless browsers ondersteunt
+- Continue processen kan draaien
+- Environment variables kan beheren
 
-## 📋 Vereisten
+## Stap 1: Railway Project Aanmaken
 
-1. **Railway account** (gratis op [railway.app](https://railway.app))
-2. **GitHub repository** (of Railway CLI)
-3. **Vercel app** met API endpoints (al gedeployed)
+1. Ga naar https://railway.app
+2. Klik op "New Project"
+3. Kies "Deploy from GitHub repo"
+4. Selecteer je marktplaats repository
 
-## 🚀 Stap 1: Railway Project Aanmaken
+## Stap 2: Service Configureren
 
-1. Ga naar [railway.app](https://railway.app) en log in
-2. Klik op **"New Project"**
-3. Kies **"Deploy from GitHub repo"**
-4. Selecteer je `marktplaats` repository
-5. Railway detecteert automatisch de configuratie
+### Service Type
+- **Type**: Web Service (of Background Worker)
+- **Start Command**: `python scripts/post_all_pending.py` (of je monitor script)
 
-## ⚙️ Stap 2: Environment Variables Instellen
+### Environment Variables
 
-In Railway dashboard, ga naar je service → **Variables** tab en voeg toe:
+Voeg de volgende environment variables toe in Railway:
 
-### Verplichte Variables:
+```env
+# Marktplaats API
+NEXTAUTH_URL=https://jouw-vercel-app.vercel.app
+API_BASE_URL=https://jouw-vercel-app.vercel.app
+INTERNAL_API_KEY=je-api-key-hier
 
-```bash
-# API Configuration
-API_BASE_URL=https://jouw-app.vercel.app
-NEXTAUTH_URL=https://jouw-app.vercel.app
-INTERNAL_API_KEY=jouw-api-key-hier
-
-# Playwright Configuration
-PLAYWRIGHT_HEADLESS=true
-
-# Marktplaats Configuration
-MARKTPLAATS_BASE_URL=https://www.marktplaats.nl
-
-# Worker Configuration (optioneel)
-CHECK_INTERVAL=300  # Check elke 5 minuten (in seconden)
-```
-
-### Waar vind je INTERNAL_API_KEY?
-
-1. Ga naar je Vercel dashboard
-2. Selecteer je project
-3. Ga naar **Settings** → **Environment Variables**
-4. Zoek `INTERNAL_API_KEY`
-5. Kopieer de waarde en plak in Railway
-
-## 📦 Stap 3: Build & Deploy Configuratie
-
-Railway gebruikt automatisch `railway.json` voor configuratie. De configuratie:
-
-- **Build**: Installeert Python dependencies en Playwright Chromium
-- **Deploy**: Start de worker script die continu draait
-
-### Handmatige Configuratie (als railway.json niet werkt):
-
-1. Ga naar je service → **Settings**
-2. **Build Command**:
-   ```bash
-   pip install -r requirements.txt && playwright install chromium
-   ```
-3. **Start Command**:
-   ```bash
-   python scripts/railway_worker.py
-   ```
-
-## 💾 Stap 4: Persistent Storage (Belangrijk!)
-
-De worker moet de Marktplaats login sessie bewaren. Railway heeft persistent storage nodig:
-
-1. Ga naar je service → **Settings**
-2. Scroll naar **"Volumes"**
-3. Klik **"Add Volume"**
-4. Mount path: `/app/user_data`
-5. Dit bewaart de login sessie tussen restarts
-
-### Of via Environment Variable:
-
-```bash
+# Playwright Configuratie
 USER_DATA_DIR=/app/user_data
+MEDIA_ROOT=/app/public/media
+MARKTPLAATS_BASE_URL=https://www.marktplaats.nl
+HEADLESS=true
+
+# Optioneel
+ACTION_DELAY_MS=200
+MP_VERBOSE=true
+MP_FAST=true
 ```
 
-## 🔄 Stap 5: Eerste Login Setup
+### Belangrijke Notities:
 
-De eerste keer moet je handmatig inloggen op Marktplaats:
+1. **USER_DATA_DIR**: Gebruik `/app/user_data` voor persistent storage
+   - Railway heeft persistent volumes, dus de login sessie blijft behouden
+   - De eerste keer moet je handmatig inloggen (zie Stap 3)
 
-### Optie A: Via Railway Logs (Aanbevolen)
+2. **HEADLESS**: Zet op `true` voor Railway (geen display beschikbaar)
 
-1. Deploy de worker
-2. Wacht tot de worker draait
-3. De worker probeert automatisch in te loggen
-4. Check de logs voor login instructies
+3. **INTERNAL_API_KEY**: Moet hetzelfde zijn als in je Vercel deployment
 
-### Optie B: Via Login Script
+## Stap 3: Eerste Login Setup
 
-Maak een tijdelijk login script:
+Voor de eerste keer moet je handmatig inloggen:
 
-```python
-# scripts/railway_login.py
-import asyncio
-from post_ads import run
-
-async def login():
-    await run(
-        csv_path=None,
-        api_url=None,
-        product_id=None,
-        login_only=True,  # Alleen inloggen
-        keep_open=False
-    )
-
-if __name__ == '__main__':
-    asyncio.run(login())
-```
-
-Run dit eenmalig via Railway CLI of via een tijdelijke service.
-
-## 📊 Stap 6: Monitoring
-
-### Railway Dashboard:
-
-1. Ga naar je service
-2. **Metrics** tab: Zie CPU, Memory, Network usage
-3. **Logs** tab: Zie real-time logs van de worker
-
-### Logs Controleren:
-
-```bash
-# Via Railway CLI
-railway logs
-
-# Of via dashboard
-# Ga naar service → Logs tab
-```
-
-## 🔧 Troubleshooting
-
-### Worker start niet:
-
-1. Check **Logs** voor error messages
-2. Verify alle environment variables zijn ingesteld
-3. Check of `requirements.txt` alle dependencies bevat
-
-### "Playwright browser not found":
-
-```bash
-# Voeg toe aan build command:
-playwright install chromium
-playwright install-deps chromium
-```
-
-### "401 Unauthorized":
-
-- Check of `INTERNAL_API_KEY` correct is ingesteld
-- Check of de key in Vercel hetzelfde is als in Railway
-- Verify `API_BASE_URL` wijst naar je Vercel app
-
-### Login sessie verloren:
-
-- Check of volume is gemount op `/app/user_data`
-- Verify `USER_DATA_DIR` environment variable
-- Mogelijk moet je opnieuw inloggen
-
-### Worker draait maar post niets:
-
-1. Check logs voor "No pending products"
-2. Verify er zijn daadwerkelijk pending products in database
-3. Test het batch endpoint handmatig:
+1. Zet tijdelijk `HEADLESS=false` (als Railway dit ondersteunt via browser)
+2. Of gebruik lokaal:
    ```bash
-   curl -X POST "https://jouw-app.vercel.app/api/products/batch-post" \
-     -H "x-api-key: jouw-api-key"
+   python scripts/post_ads.py --login
+   ```
+   Dit opent een browser waar je handmatig inlogt
+3. Kopieer de `user_data` folder naar Railway (via persistent volume)
+
+**Alternatief**: Gebruik Railway's browser preview (als beschikbaar) om in te loggen.
+
+## Stap 4: Persistent Volume Configureren
+
+Railway heeft automatisch persistent storage voor `/app`, maar zorg dat:
+
+1. De `user_data` folder wordt behouden tussen deployments
+2. Railway's persistent volume is gekoppeld aan `/app/user_data`
+
+## Stap 5: Dependencies Installeren
+
+Railway detecteert automatisch Python projecten, maar zorg dat:
+
+1. `requirements.txt` bestaat in de root
+2. Playwright browsers worden geïnstalleerd:
+   ```bash
+   python -m playwright install chromium
    ```
 
-## 📈 Optimalisatie
+Voeg dit toe aan je start script of gebruik een build command.
 
-### Check Interval Aanpassen:
+## Stap 6: Monitoring Script (Optioneel)
 
-```bash
-# Elke 1 minuut (60 seconden)
-CHECK_INTERVAL=60
-
-# Elke 10 minuten (600 seconden)
-CHECK_INTERVAL=600
-```
-
-### Resource Limits:
-
-Railway gratis tier heeft:
-- 512MB RAM
-- 1GB Storage
-- 100GB Bandwidth/maand
-
-Voor productie, overweeg:
-- **Hobby Plan** ($5/maand): Meer resources
-- **Pro Plan** ($20/maand): Nog meer resources + support
-
-## 🎯 Testen
-
-### Test de Worker Lokaal:
+Voor continue monitoring van pending producten, gebruik:
 
 ```bash
-# Set environment variables
-export API_BASE_URL=https://jouw-app.vercel.app
-export INTERNAL_API_KEY=jouw-api-key
-export PLAYWRIGHT_HEADLESS=true
-
-# Run worker
-python scripts/railway_worker.py
+python scripts/monitor_categories.py
 ```
 
-### Test Batch Endpoint:
+Of maak een eigen loop script dat `post_all_pending.py` periodiek aanroept.
 
-```bash
-curl -X POST "https://jouw-app.vercel.app/api/products/batch-post" \
-  -H "x-api-key: jouw-api-key" \
-  -H "Content-Type: application/json"
-```
+## Troubleshooting
 
-## 📝 Checklist
+### Login Sessie Verloren
+- Controleer of `USER_DATA_DIR` correct is ingesteld
+- Zorg dat Railway's persistent volume is gekoppeld
+- Herhaal Stap 3 om opnieuw in te loggen
 
-- [ ] Railway account aangemaakt
-- [ ] Project gedeployed van GitHub
-- [ ] Alle environment variables ingesteld
-- [ ] Persistent volume toegevoegd voor user_data
-- [ ] Build command werkt (Playwright geïnstalleerd)
-- [ ] Worker start succesvol
-- [ ] Eerste login voltooid
-- [ ] Worker detecteert pending products
-- [ ] Batch posting werkt
-- [ ] Logs worden correct getoond
+### Browser Start Fouten
+- Zorg dat `HEADLESS=true` is ingesteld
+- Controleer of Playwright browsers zijn geïnstalleerd
+- Check Railway logs voor specifieke errors
 
-## 🆘 Hulp Nodig?
+### API Connectie Problemen
+- Controleer of `NEXTAUTH_URL` en `API_BASE_URL` correct zijn
+- Verifieer dat `INTERNAL_API_KEY` overeenkomt met Vercel
+- Test de API endpoints handmatig
 
-1. Check Railway logs voor errors
-2. Verify alle environment variables
-3. Test endpoints handmatig met curl
-4. Check Vercel logs voor API errors
-5. Railway docs: [docs.railway.app](https://docs.railway.app)
+### Foto Upload Problemen
+- Controleer of `MEDIA_ROOT` correct is ingesteld
+- Zorg dat de folder bestaat en schrijfbaar is
+- Voor blob storage, gebruik Vercel Blob Storage (zie VERCEL_BLOB_SETUP.md)
 
-## 🔄 Updates Deployen
+## Railway vs Vercel
 
-Railway deployt automatisch bij elke push naar GitHub:
+- **Vercel**: Host de Next.js web app (frontend + API)
+- **Railway**: Draait de Python scripts (Playwright automatisering)
 
-```bash
-git add .
-git commit -m "Update worker"
-git push
-```
-
-Railway detecteert de push en deployt automatisch!
-
+Deze scheiding is ideaal omdat:
+- Vercel is geoptimaliseerd voor Next.js
+- Railway is beter voor lange-running processen met persistent storage
+- Playwright werkt beter op Railway (niet serverless)

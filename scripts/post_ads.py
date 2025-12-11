@@ -1165,17 +1165,21 @@ async def run(csv_path: Optional[str], api_url: Optional[str], product_id: Optio
 	headless_env = os.getenv('HEADLESS', '').lower()
 	has_display = os.getenv('DISPLAY') is not None
 	is_ci = os.getenv('CI') is not None or os.getenv('VERCEL') is not None
+	is_railway = os.getenv('RAILWAY_ENVIRONMENT') is not None
+	
+	# Railway should run headless by default
 	should_be_headless = (
 		headless_env in ('1', 'true', 'yes', 'on') or
 		not has_display or
-		is_ci
+		is_ci or
+		is_railway
 	)
 	
 	# Allow override via environment variable
 	if headless_env in ('0', 'false', 'no', 'off'):
 		should_be_headless = False
 	
-	print(f"[DEBUG] Headless mode: {should_be_headless} (HEADLESS={headless_env}, DISPLAY={has_display}, CI={is_ci})")
+	print(f"[DEBUG] Headless mode: {should_be_headless} (HEADLESS={headless_env}, DISPLAY={has_display}, CI={is_ci}, RAILWAY={is_railway})")
 
 	async with async_playwright() as p:
 		try:

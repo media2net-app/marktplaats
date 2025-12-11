@@ -11,8 +11,27 @@ export async function GET(request: NextRequest) {
     const session = await getServerSession()
     
     // Allow authentication via session or API key (for Python script)
-    const apiKey = request.headers.get('x-api-key') || request.nextUrl.searchParams.get('api_key')
+    const apiKeyHeader = request.headers.get('x-api-key')
+    const apiKeyQuery = request.nextUrl.searchParams.get('api_key')
+    const apiKey = apiKeyHeader || apiKeyQuery
     const validApiKey = process.env.INTERNAL_API_KEY || 'internal-key-change-in-production'
+    
+    // Log for debugging (only in development or if key mismatch)
+    const trimmedApiKey = apiKey?.trim()
+    const trimmedValidKey = validApiKey.trim()
+    const keysMatch = trimmedApiKey === trimmedValidKey
+    
+    if (process.env.NODE_ENV !== 'production' || !keysMatch) {
+      console.log('[PENDING API] Auth check:', {
+        hasHeader: !!apiKeyHeader,
+        hasQuery: !!apiKeyQuery,
+        keyLength: apiKey?.length,
+        validKeyLength: validApiKey.length,
+        keysMatch: keysMatch,
+        keyPrefix: apiKey?.substring(0, 10) + '...',
+        validPrefix: validApiKey.substring(0, 10) + '...'
+      })
+    }
     
     // Try session first, then API key
     let session_user = null
@@ -22,11 +41,19 @@ export async function GET(request: NextRequest) {
       // Session check failed, try API key
     }
     
-    // Validate API key if no session
-    const isApiKeyValid = apiKey && (apiKey === validApiKey)
+    // Validate API key if no session (trim whitespace for comparison)
+    const isApiKeyValid = trimmedApiKey && (trimmedApiKey === trimmedValidKey)
     
     if (!session_user && !isApiKeyValid) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.error('[PENDING API] Unauthorized:', {
+        hasSession: !!session_user,
+        hasApiKey: !!apiKey,
+        keysMatch: keysMatch
+      })
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        hint: !apiKey ? 'No API key provided. Include x-api-key header or api_key query parameter.' : 'Invalid API key.'
+      }, { status: 401 })
     }
 
     // Get user ID from session or use a default (for API key mode, get first user or all)

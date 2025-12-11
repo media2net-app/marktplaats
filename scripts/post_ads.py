@@ -54,8 +54,17 @@ def read_products_from_api(api_url: str) -> List[Product]:
 	if not requests:
 		raise ImportError("requests library is required for API mode. Install with: pip install requests")
 	
+	# Extract API key from URL or environment
+	api_key = os.getenv('INTERNAL_API_KEY') or 'internal-key-change-in-production'
+	
+	# Prepare headers with API key
+	headers = {
+		'x-api-key': api_key,
+		'Content-Type': 'application/json'
+	}
+	
 	try:
-		response = requests.get(api_url, timeout=30)
+		response = requests.get(api_url, headers=headers, timeout=30)
 		response.raise_for_status()
 		data = response.json()
 		

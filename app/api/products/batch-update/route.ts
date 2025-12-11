@@ -11,8 +11,15 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession()
     
     // Allow authentication via session or API key
-    const apiKey = request.headers.get('x-api-key') || request.nextUrl.searchParams.get('api_key')
+    const apiKeyHeader = request.headers.get('x-api-key')
+    const apiKeyQuery = request.nextUrl.searchParams.get('api_key')
+    const apiKey = apiKeyHeader || apiKeyQuery
     const validApiKey = process.env.INTERNAL_API_KEY || 'internal-key-change-in-production'
+    
+    // Trim and compare API keys
+    const trimmedApiKey = apiKey?.trim()
+    const trimmedValidKey = validApiKey.trim()
+    const keysMatch = trimmedApiKey === trimmedValidKey
     
     let session_user = null
     try {
@@ -22,10 +29,18 @@ export async function POST(request: NextRequest) {
     }
     
     // Validate API key if no session
-    const isApiKeyValid = apiKey && (apiKey === validApiKey)
+    const isApiKeyValid = trimmedApiKey && keysMatch
     
     if (!session_user && !isApiKeyValid) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      console.error('[BATCH-UPDATE] Unauthorized:', {
+        hasSession: !!session_user,
+        hasApiKey: !!apiKey,
+        keysMatch: keysMatch
+      })
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        hint: !apiKey ? 'No API key provided.' : 'Invalid API key.'
+      }, { status: 401 })
     }
 
     const body = await request.json()

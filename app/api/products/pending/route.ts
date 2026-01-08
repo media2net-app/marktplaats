@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import fs from 'fs'
+import path from 'path'
 
 /**
  * Get all pending products for batch processing
@@ -56,51 +58,139 @@ export async function GET(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Get user ID from session or use a default (for API key mode, get first user or all)
+    // Get user ID from session or use a default (for API key mode, get all pending products)
     let userId: string | null = null
     if (session_user) {
       userId = session_user.user.id
     } else if (isApiKeyValid) {
-      // For API key mode, get the first user's products (or you could pass user_id as param)
-      // In a multi-user system, you'd want to pass user_id as a parameter
-      const firstUser = await prisma.user.findFirst()
-      if (firstUser) {
-        userId = firstUser.id
-      } else {
-        return NextResponse.json({ error: 'No users found' }, { status: 404 })
-      }
+      // For API key mode, get ALL pending products from ALL users
+      // This allows the worker script to process products from any user
+      userId = null // null means get all users' products
     } else {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Build where clause - if userId is null, get all pending products
+    const whereClause: any = { 
+      status: 'pending',
+    }
+    if (userId) {
+      whereClause.userId = userId
+    }
+
     const products = await prisma.product.findMany({
-      where: { 
-        userId: userId,
-        status: 'pending',
-      },
+      where: whereClause,
       include: {
         category: true,
       },
       orderBy: { createdAt: 'asc' },
     })
 
+    // Helper function to get category fields (same logic as /api/categories/[id]/fields)
+    const getCategoryFields = async (categoryId: string | null, categoryPath: string | null): Promise<Record<string, any>> => {
+      if (!categoryId) return {}
+      
+      try {
+        const jsonPath = path.join(process.cwd(), 'category_fields_v2.json')
+        if (!fs.existsSync(jsonPath)) {
+          console.warn(`category_fields_v2.json not found at ${jsonPath}`)
+          return {}
+        }
+        
+        const fileContent = fs.readFileSync(jsonPath, 'utf-8')
+        const data = JSON.parse(fileContent)
+        const allCategories = data?.categorySpecificFields?.categories || {}
+        
+        // First, try direct match by category ID
+        let categoryFields = allCategories[categoryId]
+        
+        // If not found and we have a category path, try matching by path
+        if (!categoryFields && categoryPath) {
+          // Try exact path match
+          const foundByPath = Object.values(allCategories).find((cat: any) => 
+            cat.categoryPath?.toLowerCase() === categoryPath.toLowerCase()
+          )
+          
+          if (foundByPath) {
+            categoryFields = foundByPath
+          } else {
+            // Try fuzzy match on path
+            const normalizedDbPath = categoryPath.toLowerCase().replace(/\s*>\s*/g, ' > ').trim()
+            const foundByFuzzyPath = Object.values(allCategories).find((cat: any) => {
+              if (!cat.categoryPath) return false
+              const normalizedCatPath = cat.categoryPath.toLowerCase().replace(/\s*>\s*/g, ' > ').trim()
+              return normalizedCatPath === normalizedDbPath
+            })
+            
+            if (foundByFuzzyPath) {
+              categoryFields = foundByFuzzyPath
+            } else {
+              // Try partial match
+              const dbPathParts = normalizedDbPath.split(' > ').map((p: string) => p.trim())
+              const foundByPartial = Object.values(allCategories).find((cat: any) => {
+                if (!cat.categoryPath) return false
+                const catPathParts = cat.categoryPath.toLowerCase().split(' > ').map((p: string) => p.trim())
+                if (dbPathParts.length > catPathParts.length) return false
+                let dbIndex = 0
+                for (let i = 0; i < catPathParts.length && dbIndex < dbPathParts.length; i++) {
+                  if (catPathParts[i].includes(dbPathParts[dbIndex]) || dbPathParts[dbIndex].includes(catPathParts[i])) {
+                    dbIndex++
+                  }
+                }
+                return dbIndex === dbPathParts.length
+              })
+              
+              if (foundByPartial) {
+                categoryFields = foundByPartial
+              }
+            }
+          }
+        }
+        
+        if (categoryFields?.fields) {
+          // Convert fields array to object format expected by Python script
+          const fieldsObj: Record<string, any> = {}
+          categoryFields.fields.forEach((field: any) => {
+            const fieldKey = field.name || field.id
+            if (fieldKey) {
+              // For now, return empty values - the Python script will fill them from product data
+              // In the future, we could store categoryFields in the product model
+              fieldsObj[fieldKey] = ''
+            }
+          })
+          return fieldsObj
+        }
+      } catch (error) {
+        console.error(`Error loading category fields for ${categoryId}:`, error)
+      }
+      
+      return {}
+    }
+
     // Format products for Python script compatibility
-    const exportData = products.map(product => ({
-      id: product.id,
-      title: product.title,
-      description: product.description,
-      price: product.price.toString(),
-      location: product.location || '',
-      photos: [], // Photos are found via article_number in media folder
-      article_number: product.articleNumber,
-      condition: product.condition || 'Gebruikt',
-      delivery_methods: [],
-      material: product.material || '',
-      thickness: product.thickness || '',
-      total_surface: product.totalSurface || '',
-      delivery_option: product.deliveryOption || 'Ophalen of Verzenden',
-      category_path: product.category?.path || null,
-    }))
+    const exportDataPromises = products.map(async (product) => {
+      const categoryFields = await getCategoryFields(product.categoryId, product.category?.path || null)
+      
+      return {
+        id: product.id,
+        title: product.title,
+        description: product.description,
+        price: product.price.toString(),
+        location: product.location || '',
+        photos: [], // Photos are found via article_number in media folder
+        article_number: product.articleNumber,
+        condition: product.condition || 'Gebruikt',
+        delivery_methods: [],
+        material: product.material || '',
+        thickness: product.thickness || '',
+        total_surface: product.totalSurface || '',
+        delivery_option: product.deliveryOption || 'Ophalen of Verzenden',
+        category_path: product.category?.path || null,
+        category_fields: categoryFields, // Add category-specific fields
+      }
+    })
+    
+    const exportData = await Promise.all(exportDataPromises)
 
     return NextResponse.json(exportData)
   } catch (error) {

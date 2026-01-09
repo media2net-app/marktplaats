@@ -90,6 +90,24 @@ export async function GET(request: NextRequest) {
       whereClause,
     })
 
+    // First, let's check ALL products to see what we have
+    const allProductsCheck = await prisma.product.findMany({
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        userId: true,
+      },
+      take: 10, // Just check first 10
+    })
+
+    console.log('[PENDING API] All products sample:', {
+      totalInDb: await prisma.product.count(),
+      sample: allProductsCheck,
+      uniqueStatuses: [...new Set(allProductsCheck.map(p => p.status))],
+      uniqueUserIds: [...new Set(allProductsCheck.map(p => p.userId))],
+    })
+
     const products = await prisma.product.findMany({
       where: whereClause,
       include: {
@@ -104,6 +122,7 @@ export async function GET(request: NextRequest) {
       whereClause,
       productCount: products.length,
       productIds: products.map(p => p.id),
+      productTitles: products.map(p => p.title),
     })
 
     // Helper function to get category fields (same logic as /api/categories/[id]/fields)

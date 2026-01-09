@@ -240,15 +240,20 @@ export async function GET(request: NextRequest) {
     
     const exportData = await Promise.all(exportDataPromises)
 
-    // Always include debug info when using API key (for troubleshooting)
-    // Log to help debug
-    console.log('[PENDING API] Final check:', {
-      isApiKeyValid,
-      exportDataLength: exportData.length,
-      willReturnDebug: isApiKeyValid && exportData.length === 0,
-    })
-    
+    // Always include debug info when using API key and no products found (for troubleshooting)
     if (isApiKeyValid && exportData.length === 0) {
+      // Get all products with pending status to see what's in DB
+      const allPendingInDb = await prisma.product.findMany({
+        where: { status: 'pending' },
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          userId: true,
+        },
+        take: 20,
+      })
+      
       return NextResponse.json({
         products: exportData,
         debug: {
@@ -258,6 +263,7 @@ export async function GET(request: NextRequest) {
           whereClause,
           hasUserId: !!userId,
           userId: userId,
+          isApiKeyValid: isApiKeyValid,
           sampleProducts: allProductsCheck.slice(0, 10).map(p => ({
             title: p.title.substring(0, 50),
             status: p.status,
@@ -269,6 +275,12 @@ export async function GET(request: NextRequest) {
             completed: allProductsCheck.filter(p => p.status === 'completed').length,
             failed: allProductsCheck.filter(p => p.status === 'failed').length,
           },
+          pendingProductsInDb: allPendingInDb.map(p => ({
+            title: p.title.substring(0, 50),
+            status: p.status,
+            userId: p.userId.substring(0, 15) + '...',
+          })),
+          pendingCountInDb: allPendingInDb.length,
         },
       })
     }

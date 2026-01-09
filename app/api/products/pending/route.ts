@@ -86,6 +86,14 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'asc' },
     })
 
+    // Debug logging
+    console.log('[PENDING API] Query result:', {
+      userId: userId,
+      whereClause,
+      productCount: products.length,
+      productIds: products.map(p => p.id),
+    })
+
     // Helper function to get category fields (same logic as /api/categories/[id]/fields)
     const getCategoryFields = async (categoryId: string | null, categoryPath: string | null): Promise<Record<string, any>> => {
       if (!categoryId) return {}

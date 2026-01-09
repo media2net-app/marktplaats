@@ -117,24 +117,6 @@ export async function GET(request: NextRequest) {
       whereClause,
     })
 
-    // First, let's check ALL products to see what we have
-    const allProductsCheck = await prisma.product.findMany({
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        userId: true,
-      },
-      take: 10, // Just check first 10
-    })
-
-    console.log('[PENDING API] All products sample:', {
-      totalInDb: await prisma.product.count(),
-      sample: allProductsCheck,
-      uniqueStatuses: [...new Set(allProductsCheck.map(p => p.status))],
-      uniqueUserIds: [...new Set(allProductsCheck.map(p => p.userId))],
-    })
-
     const products = await prisma.product.findMany({
       where: whereClause,
       include: {

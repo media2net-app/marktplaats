@@ -71,12 +71,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause - if userId is null, get all pending products
-    const whereClause: any = { 
-      status: 'pending',
-    }
+    let whereClause: any
     if (userId) {
-      whereClause.userId = userId
+      whereClause = { 
+        userId: userId,
+        status: 'pending',
+      }
+    } else {
+      // Get all pending products from all users
+      whereClause = { 
+        status: 'pending',
+      }
     }
+
+    console.log('[PENDING API] Query params:', {
+      hasUserId: !!userId,
+      userId: userId,
+      whereClause,
+    })
 
     const products = await prisma.product.findMany({
       where: whereClause,

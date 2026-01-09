@@ -241,6 +241,13 @@ export async function GET(request: NextRequest) {
     const exportData = await Promise.all(exportDataPromises)
 
     // Always include debug info when using API key (for troubleshooting)
+    // Log to help debug
+    console.log('[PENDING API] Final check:', {
+      isApiKeyValid,
+      exportDataLength: exportData.length,
+      willReturnDebug: isApiKeyValid && exportData.length === 0,
+    })
+    
     if (isApiKeyValid && exportData.length === 0) {
       return NextResponse.json({
         products: exportData,

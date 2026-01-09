@@ -241,7 +241,9 @@ export async function GET(request: NextRequest) {
     const exportData = await Promise.all(exportDataPromises)
 
     // Always include debug info when using API key and no products found (for troubleshooting)
-    if (isApiKeyValid && exportData.length === 0) {
+    // Force debug info if we have an API key (even if validation might have issues)
+    const hasApiKey = !!apiKey
+    if (hasApiKey && exportData.length === 0) {
       // Get all products with pending status to see what's in DB
       const allPendingInDb = await prisma.product.findMany({
         where: { status: 'pending' },

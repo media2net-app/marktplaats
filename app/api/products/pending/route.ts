@@ -117,13 +117,37 @@ export async function GET(request: NextRequest) {
       whereClause,
     })
 
-    const products = await prisma.product.findMany({
+    // Try to get products with pending status
+    let products = await prisma.product.findMany({
       where: whereClause,
       include: {
         category: true,
       },
       orderBy: { createdAt: 'asc' },
     })
+    
+    // If no products found, try case-insensitive search
+    if (products.length === 0) {
+      // Try to find products with any case variation of 'pending'
+      const allProducts = await prisma.product.findMany({
+        where: userId ? { userId } : {},
+        include: {
+          category: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+      
+      // Filter in memory for case-insensitive match
+      products = allProducts.filter(p => 
+        p.status && p.status.toLowerCase() === 'pending'
+      )
+      
+      console.log('[PENDING API] Case-insensitive search:', {
+        totalProducts: allProducts.length,
+        foundPending: products.length,
+        allStatuses: [...new Set(allProducts.map(p => p.status))],
+      })
+    }
 
     // Debug logging
     console.log('[PENDING API] Query result:', {

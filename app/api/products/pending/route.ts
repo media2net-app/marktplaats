@@ -71,16 +71,24 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause - if userId is null, get all pending products
+    // Try both lowercase and any case for status
     let whereClause: any
     if (userId) {
       whereClause = { 
         userId: userId,
-        status: 'pending',
+        status: {
+          equals: 'pending',
+          mode: 'insensitive', // Case-insensitive match
+        },
       }
     } else {
       // Get all pending products from all users
+      // Use case-insensitive match to catch any variations
       whereClause = { 
-        status: 'pending',
+        status: {
+          equals: 'pending',
+          mode: 'insensitive',
+        },
       }
     }
 

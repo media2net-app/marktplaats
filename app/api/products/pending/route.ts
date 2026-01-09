@@ -240,10 +240,9 @@ export async function GET(request: NextRequest) {
     
     const exportData = await Promise.all(exportDataPromises)
 
-    // Always include debug info when using API key and no products found (for troubleshooting)
-    // Force debug info if we have an API key (even if validation might have issues)
-    const hasApiKey = !!apiKey
-    if (hasApiKey && exportData.length === 0) {
+    // If no products found and API key is provided, return debug info
+    // This helps troubleshoot why products aren't being found
+    if (exportData.length === 0 && apiKey) {
       // Get all products with pending status to see what's in DB
       const allPendingInDb = await prisma.product.findMany({
         where: { status: 'pending' },
@@ -256,6 +255,14 @@ export async function GET(request: NextRequest) {
         take: 20,
       })
       
+      // Get count of all products by status
+      const [pendingCount, processingCount, completedCount, failedCount] = await Promise.all([
+        prisma.product.count({ where: { status: 'pending' } }),
+        prisma.product.count({ where: { status: 'processing' } }),
+        prisma.product.count({ where: { status: 'completed' } }),
+        prisma.product.count({ where: { status: 'failed' } }),
+      ])
+      
       return NextResponse.json({
         products: exportData,
         debug: {
@@ -266,16 +273,17 @@ export async function GET(request: NextRequest) {
           hasUserId: !!userId,
           userId: userId,
           isApiKeyValid: isApiKeyValid,
+          hasApiKey: !!apiKey,
           sampleProducts: allProductsCheck.slice(0, 10).map(p => ({
             title: p.title.substring(0, 50),
             status: p.status,
             userId: p.userId.substring(0, 15) + '...',
           })),
-          allStatusCounts: {
-            pending: allProductsCheck.filter(p => p.status === 'pending').length,
-            processing: allProductsCheck.filter(p => p.status === 'processing').length,
-            completed: allProductsCheck.filter(p => p.status === 'completed').length,
-            failed: allProductsCheck.filter(p => p.status === 'failed').length,
+          statusCounts: {
+            pending: pendingCount,
+            processing: processingCount,
+            completed: completedCount,
+            failed: failedCount,
           },
           pendingProductsInDb: allPendingInDb.map(p => ({
             title: p.title.substring(0, 50),

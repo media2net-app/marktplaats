@@ -240,8 +240,8 @@ export async function GET(request: NextRequest) {
     
     const exportData = await Promise.all(exportDataPromises)
 
-    // Include debug info in response if no products found (for troubleshooting)
-    if (exportData.length === 0 && isApiKeyValid) {
+    // Always include debug info when using API key (for troubleshooting)
+    if (isApiKeyValid && exportData.length === 0) {
       return NextResponse.json({
         products: exportData,
         debug: {
@@ -250,11 +250,18 @@ export async function GET(request: NextRequest) {
           uniqueUserIds: uniqueUserIds.length,
           whereClause,
           hasUserId: !!userId,
-          sampleProducts: allProductsCheck.slice(0, 5).map(p => ({
+          userId: userId,
+          sampleProducts: allProductsCheck.slice(0, 10).map(p => ({
             title: p.title.substring(0, 50),
             status: p.status,
-            userId: p.userId.substring(0, 10) + '...',
+            userId: p.userId.substring(0, 15) + '...',
           })),
+          allStatusCounts: {
+            pending: allProductsCheck.filter(p => p.status === 'pending').length,
+            processing: allProductsCheck.filter(p => p.status === 'processing').length,
+            completed: allProductsCheck.filter(p => p.status === 'completed').length,
+            failed: allProductsCheck.filter(p => p.status === 'failed').length,
+          },
         },
       })
     }

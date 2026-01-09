@@ -8,11 +8,28 @@ import { prisma } from '@/lib/prisma'
 export async function GET(request: NextRequest) {
   try {
     // Only allow API key authentication for this debug endpoint
-    const apiKey = request.headers.get('x-api-key') || request.nextUrl.searchParams.get('api_key')
+    const apiKeyHeader = request.headers.get('x-api-key')
+    const apiKeyQuery = request.nextUrl.searchParams.get('api_key')
+    const apiKey = apiKeyHeader || apiKeyQuery
     const validApiKey = process.env.INTERNAL_API_KEY || 'internal-key-change-in-production'
     
-    if (!apiKey || apiKey.trim() !== validApiKey.trim()) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Trim and compare
+    const trimmedApiKey = apiKey?.trim()
+    const trimmedValidKey = validApiKey.trim()
+    const isApiKeyValid = trimmedApiKey && (trimmedApiKey === trimmedValidKey)
+    
+    if (!isApiKeyValid) {
+      console.error('[DEBUG-ALL] Unauthorized:', {
+        hasHeader: !!apiKeyHeader,
+        hasQuery: !!apiKeyQuery,
+        keyLength: apiKey?.length,
+        validKeyLength: validApiKey.length,
+        keysMatch: trimmedApiKey === trimmedValidKey,
+      })
+      return NextResponse.json({ 
+        error: 'Unauthorized',
+        hint: !apiKey ? 'No API key provided' : 'Invalid API key'
+      }, { status: 401 })
     }
 
     // Get ALL products with their status

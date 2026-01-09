@@ -70,25 +70,44 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // First, let's check ALL products to see what we have
+    const allProductsCheck = await prisma.product.findMany({
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        userId: true,
+      },
+      take: 20, // Check first 20
+    })
+
+    const totalInDb = await prisma.product.count()
+    const uniqueStatuses = [...new Set(allProductsCheck.map(p => p.status))]
+    const uniqueUserIds = [...new Set(allProductsCheck.map(p => p.userId))]
+
+    console.log('[PENDING API] Database check:', {
+      totalInDb,
+      uniqueStatuses,
+      uniqueUserIds,
+      sampleProducts: allProductsCheck.map(p => ({
+        id: p.id,
+        title: p.title.substring(0, 30),
+        status: p.status,
+        userId: p.userId,
+      })),
+    })
+
     // Build where clause - if userId is null, get all pending products
-    // Try both lowercase and any case for status
     let whereClause: any
     if (userId) {
       whereClause = { 
         userId: userId,
-        status: {
-          equals: 'pending',
-          mode: 'insensitive', // Case-insensitive match
-        },
+        status: 'pending',
       }
     } else {
       // Get all pending products from all users
-      // Use case-insensitive match to catch any variations
       whereClause = { 
-        status: {
-          equals: 'pending',
-          mode: 'insensitive',
-        },
+        status: 'pending',
       }
     }
 

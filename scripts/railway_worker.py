@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 # Add scripts directory to path
 sys.path.insert(0, os.path.dirname(__file__))
-from post_ads import run
+from marktplaats.main import run
 
 def log(message: str, level: str = "inf"):
     """Log message with timestamp and level."""
@@ -31,6 +31,14 @@ async def check_and_process_pending():
     base_url = os.getenv('NEXTAUTH_URL') or os.getenv('API_BASE_URL') or 'http://localhost:3000'
     api_key = os.getenv('INTERNAL_API_KEY') or 'internal-key-change-in-production'
     check_interval = int(os.getenv('CHECK_INTERVAL', '300'))  # Default 5 minutes
+    
+    # Media root for photos (Railway uses different paths)
+    media_root = os.getenv('MEDIA_ROOT', './public/media')
+    user_data_dir = os.getenv('USER_DATA_DIR', './user_data')
+    
+    # Ensure directories exist
+    os.makedirs(media_root, exist_ok=True)
+    os.makedirs(user_data_dir, exist_ok=True)
     
     log("=" * 70)
     log("🚂 Railway Marktplaats Worker")
@@ -100,13 +108,16 @@ async def check_and_process_pending():
             log(f"Found {len(pending_products)} pending product(s)")
             log("Starting processing...")
             
-            # Process all pending products
+            # Process all pending products using new modular system
+            # Note: Railway runs headless, so no manual login needed
             results = await run(
                 csv_path=None,
                 api_url=api_url_with_key,
                 product_id=None,  # None means batch mode
                 login_only=False,
-                keep_open=False
+                keep_open=False,
+                wait_for_manual_login=False,  # Railway runs headless
+                wait_seconds=0  # No wait needed for headless
             )
             
             if results and len(results) > 0:

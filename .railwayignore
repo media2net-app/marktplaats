@@ -1,0 +1,22 @@
+# Files to ignore when deploying to Railway
+node_modules/
+.next/
+.git/
+*.log
+.env.local
+.env*.backup
+.env*.bak
+public/media/*
+!public/media/.gitkeep
+Mike/
+Mike_Final/
+*.zip
+*.bat
+*.sh
+test_*.png
+*.csv
+*.json
+!category_fields_v2.json
+!categories.json
+!requirements.txt
+!package.json

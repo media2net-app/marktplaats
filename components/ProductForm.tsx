@@ -43,6 +43,8 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
   const [previewUrls, setPreviewUrls] = useState<string[]>([])
   const [existingImages, setExistingImages] = useState<string[]>([])
   const [removedImages, setRemovedImages] = useState<string[]>([])
+  const [categoryFields, setCategoryFields] = useState<any[]>([])
+  const [categoryFieldsData, setCategoryFieldsData] = useState<Record<string, any>>({})
   const [formData, setFormData] = useState({
     title: product?.title || '',
     description: product?.description || '',
@@ -55,6 +57,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
     deliveryOption: product?.deliveryOption || 'Ophalen of Verzenden',
     location: product?.location || '',
     categoryId: product?.categoryId || '',
+    categoryFields: (product as any)?.categoryFields || {},
   })
 
   // Set initial category selection if editing
@@ -102,9 +105,61 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
     // Laad categorieën
     fetch('/api/categories')
       .then(res => res.json())
-      .then(data => setCategories(data))
+      .then(data => {
+        setCategories(data)
+        
+        // Set default category for new products
+        if (mode === 'create' && !product?.categoryId) {
+          // Find "Hobby en Vrije tijd > Overige > Overige Hobby en Vrije tijd"
+          const findCategoryInTree = (cats: Category[], path: string[]): Category | null => {
+            for (const cat of cats) {
+              if (cat.name === path[0]) {
+                if (path.length === 1) return cat
+                if (cat.children && path.length > 1) {
+                  for (const child of cat.children) {
+                    if (child.name === path[1]) {
+                      if (path.length === 2) return child
+                      if (child.children && path.length > 2) {
+                        for (const grandchild of child.children) {
+                          if (grandchild.name === path[2]) {
+                            return grandchild
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            return null
+          }
+          
+          const defaultCat = findCategoryInTree(data, ['Hobby en Vrije tijd', 'Overige', 'Overige Hobby en Vrije tijd'])
+          if (defaultCat) {
+            // Set the category selections by finding the category in the tree
+            // Find grandparent (level 1)
+            const grandparent = data.find((c: any) => 
+              c.children?.some((ch: any) => 
+                ch.children?.some((gch: any) => gch.id === defaultCat.id)
+              )
+            )
+            
+            if (grandparent) {
+              setSelectedCategory1(grandparent.id)
+              // Find parent (level 2)
+              const level2 = grandparent.children?.find((ch: any) => 
+                ch.children?.some((gch: any) => gch.id === defaultCat.id)
+              )
+              if (level2) {
+                setSelectedCategory2(level2.id)
+                setSelectedCategory3(defaultCat.id)
+              }
+            }
+          }
+        }
+      })
       .catch(err => console.error('Error loading categories:', err))
-  }, [])
+  }, [mode, product?.categoryId])
 
   // Load existing images when editing
   useEffect(() => {
@@ -120,13 +175,25 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
     }
   }, [mode, product?.id, product?.articleNumber])
 
+  // Helper function to find category recursively in nested structure
+  const findCategoryInTree = (cats: Category[], id: string): Category | null => {
+    for (const cat of cats) {
+      if (cat.id === id) return cat
+      if (cat.children && cat.children.length > 0) {
+        const found = findCategoryInTree(cat.children, id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
   // Filter categorieën per level
   const level1Categories = categories.filter(c => c.level === 1)
   const level2Categories = selectedCategory1 
-    ? categories.find(c => c.id === selectedCategory1)?.children || []
+    ? (findCategoryInTree(categories, selectedCategory1)?.children || [])
     : []
   const level3Categories = selectedCategory2
-    ? categories.find(c => c.id === selectedCategory2)?.children || []
+    ? (findCategoryInTree(categories, selectedCategory2)?.children || [])
     : []
 
   // Update categoryId wanneer een categorie wordt geselecteerd
@@ -134,6 +201,51 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
     const finalCategory = selectedCategory3 || selectedCategory2 || selectedCategory1
     setFormData(prev => ({ ...prev, categoryId: finalCategory }))
   }, [selectedCategory1, selectedCategory2, selectedCategory3])
+
+  // Load category-specific fields when category is selected
+  useEffect(() => {
+    const finalCategory = selectedCategory3 || selectedCategory2 || selectedCategory1
+    if (finalCategory) {
+      console.log(`[ProductForm] Loading category fields for: ${finalCategory}`)
+      fetch(`/api/categories/${finalCategory}/fields`)
+        .then(res => res.json())
+        .then(data => {
+          console.log(`[ProductForm] Category fields response:`, data)
+          if (data.fields && Array.isArray(data.fields) && data.fields.length > 0) {
+            setCategoryFields(data.fields)
+            // Initialize category fields data from existing product or empty
+            const initialData: Record<string, any> = {}
+            data.fields.forEach((field: any) => {
+              const fieldKey = field.name || field.id
+              // Try to get value from existing product categoryFields
+              if (formData.categoryFields && formData.categoryFields[fieldKey]) {
+                initialData[fieldKey] = formData.categoryFields[fieldKey]
+              } else if (field.defaultValue) {
+                initialData[fieldKey] = field.defaultValue
+              }
+            })
+            setCategoryFieldsData(initialData)
+            setFormData(prev => ({ 
+              ...prev, 
+              categoryFields: { ...prev.categoryFields, ...initialData }
+            }))
+            console.log(`[ProductForm] Loaded ${data.fields.length} category fields`)
+          } else {
+            console.warn(`[ProductForm] No category fields found for category: ${finalCategory}`, data)
+            setCategoryFields([])
+            setCategoryFieldsData({})
+          }
+        })
+        .catch(err => {
+          console.error('[ProductForm] Error loading category fields:', err)
+          setCategoryFields([])
+          setCategoryFieldsData({})
+        })
+    } else {
+      setCategoryFields([])
+      setCategoryFieldsData({})
+    }
+  }, [selectedCategory1, selectedCategory2, selectedCategory3, formData.categoryFields])
 
   // Reset subcategorieën wanneer hoofdcategorie verandert
   const handleCategory1Change = (value: string) => {
@@ -236,6 +348,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
         body: JSON.stringify({
           ...formData,
           price: parseFloat(formData.price),
+          categoryFields: formData.categoryFields || {},
         }),
       })
 
@@ -260,6 +373,7 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
           deliveryOption: 'Ophalen of Verzenden',
           location: '',
           categoryId: '',
+          categoryFields: {},
         })
         setSelectedCategory1('')
         setSelectedCategory2('')
@@ -395,38 +509,110 @@ export default function ProductForm({ product, onSuccess, mode = 'create' }: Pro
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Materiaal</label>
-          <input
-            type="text"
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
-            value={formData.material}
-            onChange={(e) => setFormData({ ...formData, material: e.target.value })}
-            placeholder="Bijv. Hardschuim (Pir)"
-          />
-        </div>
+        {/* Category-specific fields */}
+        {categoryFields.length > 0 && (
+          <>
+            {categoryFields.map((field: any, index: number) => {
+              const fieldKey = field.name || field.id || `field_${index}`
+              const fieldValue = categoryFieldsData[fieldKey] || ''
+              const fieldLabel = field.label || field.name || fieldKey
+              const fieldType = field.type || 'text'
+              const fieldOptions = field.options || []
+              const isRequired = field.required || false
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Dikte</label>
-          <input
-            type="text"
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
-            value={formData.thickness}
-            onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
-            placeholder="Bijv. 4 tot 8 cm"
-          />
-        </div>
+              if (fieldType === 'select' || fieldType === 'dropdown') {
+                return (
+                  <div key={fieldKey}>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2.5">
+                      {fieldLabel} {isRequired && <span className="text-red-500">*</span>}
+                    </label>
+                    <select
+                      required={isRequired}
+                      className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all cursor-pointer"
+                      value={fieldValue}
+                      onChange={(e) => {
+                        const newData = { ...categoryFieldsData, [fieldKey]: e.target.value }
+                        setCategoryFieldsData(newData)
+                        setFormData(prev => ({ 
+                          ...prev, 
+                          categoryFields: { ...prev.categoryFields, [fieldKey]: e.target.value }
+                        }))
+                      }}
+                    >
+                      <option value="">Selecteer...</option>
+                      {fieldOptions.map((opt: any) => (
+                        <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
+                          {typeof opt === 'string' ? opt : opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              }
 
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2.5">Oppervlakte</label>
-          <input
-            type="text"
-            className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
-            value={formData.totalSurface}
-            onChange={(e) => setFormData({ ...formData, totalSurface: e.target.value })}
-            placeholder="Bijv. 5 tot 10 m²"
-          />
-        </div>
+              return (
+                <div key={fieldKey}>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2.5">
+                    {fieldLabel} {isRequired && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type={fieldType}
+                    required={isRequired}
+                    className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+                    value={fieldValue}
+                    onChange={(e) => {
+                      const newData = { ...categoryFieldsData, [fieldKey]: e.target.value }
+                      setCategoryFieldsData(newData)
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        categoryFields: { ...prev.categoryFields, [fieldKey]: e.target.value }
+                      }))
+                    }}
+                    placeholder={field.placeholder || `Voer ${fieldLabel.toLowerCase()} in`}
+                  />
+                </div>
+              )
+            })}
+          </>
+        )}
+
+        {/* Legacy fields (only show if no category fields) */}
+        {categoryFields.length === 0 && (
+          <>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2.5">Materiaal</label>
+              <input
+                type="text"
+                className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+                value={formData.material}
+                onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                placeholder="Bijv. Hardschuim (Pir)"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2.5">Dikte</label>
+              <input
+                type="text"
+                className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+                value={formData.thickness}
+                onChange={(e) => setFormData({ ...formData, thickness: e.target.value })}
+                placeholder="Bijv. 4 tot 8 cm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2.5">Oppervlakte</label>
+              <input
+                type="text"
+                className="block w-full px-4 py-3 rounded-lg border-2 border-gray-300 bg-white shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 text-gray-900 transition-all placeholder:text-gray-400"
+                value={formData.totalSurface}
+                onChange={(e) => setFormData({ ...formData, totalSurface: e.target.value })}
+                placeholder="Bijv. 5 tot 10 m²"
+              />
+            </div>
+          </>
+        )}
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2.5">Locatie</label>

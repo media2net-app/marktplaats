@@ -16,16 +16,22 @@ export async function GET(request: NextRequest) {
     const serviceId = process.env.RAILWAY_SERVICE_ID
 
     if (!railwayToken) {
+      console.error('[RAILWAY LOGS] RAILWAY_API_TOKEN not configured')
       return NextResponse.json({ 
         error: 'Railway API token not configured',
-        hint: 'Set RAILWAY_API_TOKEN environment variable'
+        message: 'Failed to fetch logs from Railway',
+        hint: 'Set RAILWAY_API_TOKEN environment variable in Vercel',
+        configured: false
       }, { status: 500 })
     }
 
     if (!serviceId) {
+      console.error('[RAILWAY LOGS] RAILWAY_SERVICE_ID not configured')
       return NextResponse.json({ 
         error: 'Railway Service ID not configured',
-        hint: 'Set RAILWAY_SERVICE_ID environment variable'
+        message: 'Failed to fetch logs from Railway',
+        hint: 'Set RAILWAY_SERVICE_ID environment variable in Vercel',
+        configured: false
       }, { status: 500 })
     }
 
@@ -81,21 +87,37 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text()
-      console.error('Railway API error:', response.status, errorText)
+      console.error('[RAILWAY LOGS] Railway API error:', response.status, errorText)
+      let errorMessage = 'Failed to fetch logs from Railway'
+      
+      // Provide more specific error messages
+      if (response.status === 401) {
+        errorMessage = 'Railway API authentication failed. Check your RAILWAY_API_TOKEN.'
+      } else if (response.status === 404) {
+        errorMessage = 'Railway service not found. Check your RAILWAY_SERVICE_ID.'
+      } else if (response.status === 403) {
+        errorMessage = 'Railway API access forbidden. Check your API token permissions.'
+      }
+      
       return NextResponse.json({ 
-        error: 'Failed to fetch logs from Railway',
+        error: errorMessage,
+        message: errorMessage,
         details: errorText,
-        status: response.status
+        status: response.status,
+        configured: true
       }, { status: response.status })
     }
 
     const data = await response.json()
 
     if (data.errors) {
-      console.error('Railway GraphQL errors:', data.errors)
+      console.error('[RAILWAY LOGS] Railway GraphQL errors:', data.errors)
+      const firstError = data.errors[0]?.message || 'Unknown error'
       return NextResponse.json({ 
         error: 'Railway API returned errors',
-        details: data.errors
+        message: `Failed to fetch logs from Railway: ${firstError}`,
+        details: data.errors,
+        configured: true
       }, { status: 500 })
     }
 
@@ -112,10 +134,13 @@ export async function GET(request: NextRequest) {
       pageInfo,
     })
   } catch (error: any) {
-    console.error('Error fetching Railway logs:', error)
+    console.error('[RAILWAY LOGS] Error fetching Railway logs:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
-      details: error.message 
+      message: `Failed to fetch logs from Railway: ${error.message || 'Unknown error'}`,
+      details: error.message,
+      configured: !!process.env.RAILWAY_API_TOKEN && !!process.env.RAILWAY_SERVICE_ID
     }, { status: 500 })
   }
 }
+

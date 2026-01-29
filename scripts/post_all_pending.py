@@ -13,10 +13,13 @@ sys.path.insert(0, os.path.dirname(__file__))
 from post_ads import run
 
 async def main():
-	load_dotenv(override=True)
+	# Load .env but don't override existing environment variables (from command line)
+	load_dotenv(override=False)
 	
 	# Get API URL from environment or use default
-	base_url = os.getenv('NEXTAUTH_URL') or os.getenv('API_BASE_URL') or 'http://localhost:3000'
+	# Check for explicit API_BASE_URL first (takes precedence)
+	# Command line env vars take precedence over .env file
+	base_url = os.getenv('API_BASE_URL') or os.getenv('NEXTAUTH_URL') or 'http://localhost:3000'
 	api_key = os.getenv('INTERNAL_API_KEY') or 'internal-key-change-in-production'
 	
 	# Use the pending products endpoint

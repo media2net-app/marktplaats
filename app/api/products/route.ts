@@ -10,6 +10,17 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+    // Get default category if no categoryId provided
+    let defaultCategoryId = body.categoryId || null
+    if (!defaultCategoryId) {
+      const defaultCategory = await prisma.category.findFirst({
+        where: { path: 'Hobby en Vrije tijd > Overige > Overige Hobby en Vrije tijd' }
+      })
+      if (defaultCategory) {
+        defaultCategoryId = defaultCategory.id
+      }
+    }
+    
     const product = await prisma.product.create({
       data: {
         title: body.title,
@@ -22,7 +33,7 @@ export async function POST(request: NextRequest) {
         totalSurface: body.totalSurface,
         deliveryOption: body.deliveryOption,
         location: body.location,
-        categoryId: body.categoryId || null,
+        categoryId: defaultCategoryId,
         status: 'pending', // Always set to pending for new products
         userId: session.user.id,
       },

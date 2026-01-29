@@ -42,6 +42,7 @@ export async function uploadFile(
 
 /**
  * List all files for an article number
+ * Supports exact match, variations, and partial matches (like Python script)
  */
 export async function listFiles(articleNumber: string): Promise<string[]> {
   if (!articleNumber) {
@@ -63,27 +64,75 @@ export async function listFiles(articleNumber: string): Promise<string[]> {
       return []
     }
   } else {
-    // List from local filesystem
-    const articleDir = path.join(MEDIA_ROOT, articleNumber)
-    
+    // List from local filesystem with smart matching (like Python script)
     try {
       // Check if MEDIA_ROOT exists
       if (!fs.existsSync(MEDIA_ROOT)) {
         return []
       }
       
-      // Check if article directory exists
-      if (!fs.existsSync(articleDir)) {
-        return []
+      // Try exact match first
+      const articleDir = path.join(MEDIA_ROOT, articleNumber)
+      if (fs.existsSync(articleDir) && fs.statSync(articleDir).isDirectory()) {
+        const files = await fs.promises.readdir(articleDir)
+        const imageFiles = files.filter(file => {
+          const ext = path.extname(file).toLowerCase()
+          return ['.jpg', '.jpeg', '.png', '.heic'].includes(ext)
+        })
+        if (imageFiles.length > 0) {
+          return imageFiles.map(file => `/media/${articleNumber}/${file}`)
+        }
       }
       
-      const files = await fs.promises.readdir(articleDir)
-      const imageFiles = files.filter(file => {
-        const ext = path.extname(file).toLowerCase()
-        return ['.jpg', '.jpeg', '.png', '.heic'].includes(ext)
-      })
+      // Try variations (replace special characters, spaces, etc.)
+      const variations = [
+        articleNumber.replace(/\//g, '-').replace(/\s+/g, '-'),
+        articleNumber.replace(/\//g, '_').replace(/\s+/g, '_'),
+        articleNumber.replace(/\s+/g, '-'),
+        articleNumber.replace(/\s+/g, '_'),
+        articleNumber.replace(/\//g, '-'),
+      ]
       
-      return imageFiles.map(file => `/media/${articleNumber}/${file}`)
+      for (const variant of variations) {
+        if (variant === articleNumber) continue // Skip if same as original
+        
+        const variantDir = path.join(MEDIA_ROOT, variant)
+        if (fs.existsSync(variantDir) && fs.statSync(variantDir).isDirectory()) {
+          const files = await fs.promises.readdir(variantDir)
+          const imageFiles = files.filter(file => {
+            const ext = path.extname(file).toLowerCase()
+            return ['.jpg', '.jpeg', '.png', '.heic'].includes(ext)
+          })
+          if (imageFiles.length > 0) {
+            return imageFiles.map(file => `/media/${variant}/${file}`)
+          }
+        }
+      }
+      
+      // Try partial match - search all folders for article number
+      const articleClean = articleNumber.toLowerCase().replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '').replace(/\//g, '')
+      const allFolders = await fs.promises.readdir(MEDIA_ROOT)
+      
+      for (const folder of allFolders) {
+        const folderPath = path.join(MEDIA_ROOT, folder)
+        if (fs.statSync(folderPath).isDirectory()) {
+          const folderClean = folder.toLowerCase().replace(/\s+/g, '').replace(/-/g, '').replace(/_/g, '').replace(/\//g, '')
+          
+          // Check if article number is in folder name or vice versa
+          if (articleClean && (articleClean.includes(folderClean) || folderClean.includes(articleClean))) {
+            const files = await fs.promises.readdir(folderPath)
+            const imageFiles = files.filter(file => {
+              const ext = path.extname(file).toLowerCase()
+              return ['.jpg', '.jpeg', '.png', '.heic'].includes(ext)
+            })
+            if (imageFiles.length > 0) {
+              return imageFiles.map(file => `/media/${folder}/${file}`)
+            }
+          }
+        }
+      }
+      
+      return []
     } catch (error) {
       // Directory doesn't exist or can't be read
       console.error('Error listing local files:', error)

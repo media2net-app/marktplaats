@@ -46,9 +46,13 @@ model Product {
   status        String   @default("pending") // pending, processing, completed, failed
   marktplaatsUrl String?
   marktplaatsAdId String? // Advertentienummer (bijv. a1519860984)
+  ebayUrl       String?
+  ebayItemId    String? // eBay item ID (bijv. 123456789)
+  ebaySku       String? // eBay SKU (gebruikt voor inventory item)
   views         Int      @default(0) // Aantal keer bekeken
   saves         Int      @default(0) // Aantal keer opgeslagen
   postedAt      DateTime? // Datum waarop geplaatst op Marktplaats
+  postedToEbayAt DateTime? // Datum waarop geplaatst op eBay
   categoryId    String?
   category      Category? @relation(fields: [categoryId], references: [id])
   createdAt     DateTime @default(now())

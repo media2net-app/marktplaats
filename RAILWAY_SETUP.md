@@ -125,3 +125,4 @@ Deze scheiding is ideaal omdat:
 - Vercel is geoptimaliseerd voor Next.js
 - Railway is beter voor lange-running processen met persistent storage
 - Playwright werkt beter op Railway (niet serverless)
+

@@ -230,6 +230,15 @@ export async function GET(request: NextRequest) {
               fieldsObj[fieldKey] = ''
             }
           })
+          
+          // Demo values for manufacturer fields (fabrikant) - for testing
+          // These fields are required for certain categories and may appear on the form even if not in category_fields
+          // We'll add them to the fieldsObj if the category might need them
+          // The form_filler will handle filling them when they appear on the page
+          
+          // For now, we don't add them here - they'll be filled dynamically by the form_filler
+          // when it detects them on the page
+          
           return fieldsObj
         }
       } catch (error) {

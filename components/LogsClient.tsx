@@ -25,12 +25,17 @@ export default function LogsClient({}: LogsClientProps) {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || `Failed to fetch logs: ${response.status}`)
+        // Check if it's a configuration error
+        if (data.configured === false) {
+          throw new Error(data.message || data.error || 'Railway logs niet geconfigureerd')
+        }
+        throw new Error(data.message || data.error || `Failed to fetch logs: ${response.status}`)
       }
 
       setLogs(data.logs || [])
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch logs')
+      const errorMessage = err.message || 'Failed to fetch logs from Railway'
+      setError(errorMessage)
       console.error('Error fetching logs:', err)
     } finally {
       setLoading(false)
@@ -130,13 +135,23 @@ export default function LogsClient({}: LogsClientProps) {
             <div className="flex-1">
               <h3 className="text-sm font-medium text-red-800">Fout bij ophalen logs</h3>
               <p className="text-sm text-red-700 mt-1">{error}</p>
-              {error.includes('not configured') && (
+              {(error.includes('not configured') || error.includes('niet geconfigureerd') || error.includes('Railway API token') || error.includes('Railway Service ID')) && (
                 <div className="mt-3 text-sm text-red-600">
                   <p className="font-medium">Zorg dat de volgende environment variables zijn ingesteld in Vercel:</p>
                   <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li><code>RAILWAY_API_TOKEN</code> - Je Railway API token</li>
-                    <li><code>RAILWAY_SERVICE_ID</code> - Je Railway Service ID</li>
+                    <li><code className="bg-red-100 px-1 rounded">RAILWAY_API_TOKEN</code> - Je Railway API token</li>
+                    <li><code className="bg-red-100 px-1 rounded">RAILWAY_SERVICE_ID</code> - Je Railway Service ID</li>
                   </ul>
+                  <div className="mt-3 p-3 bg-red-50 rounded border border-red-200">
+                    <p className="font-medium text-red-800 mb-2">Hoe te configureren:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-red-700">
+                      <li>Ga naar je Vercel project dashboard</li>
+                      <li>Klik op "Settings" → "Environment Variables"</li>
+                      <li>Voeg <code className="bg-red-100 px-1 rounded">RAILWAY_API_TOKEN</code> toe met je Railway API token</li>
+                      <li>Voeg <code className="bg-red-100 px-1 rounded">RAILWAY_SERVICE_ID</code> toe met je Railway Service ID</li>
+                      <li>Redeploy je applicatie</li>
+                    </ol>
+                  </div>
                 </div>
               )}
             </div>
@@ -200,3 +215,4 @@ export default function LogsClient({}: LogsClientProps) {
     </div>
   )
 }
+

@@ -99,3 +99,4 @@ curl https://marktplaats-eight.vercel.app/api/auth/providers
 ```
 
 Als dit werkt, is NextAuth geconfigureerd. Als dit faalt, check de environment variables.
+

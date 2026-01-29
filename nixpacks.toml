@@ -1,0 +1,15 @@
+[phases.setup]
+nixPkgs = ["python3", "python3Packages.pip"]
+
+[phases.install]
+cmds = [
+  "pip install -r requirements.txt",
+  "python -m playwright install chromium",
+  "python -m playwright install-deps"
+]
+
+[phases.build]
+cmds = []
+
+[start]
+cmd = "python scripts/railway_worker.py"

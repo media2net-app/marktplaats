@@ -10,15 +10,20 @@ interface Product {
   articleNumber: string
   status: string
   marktplaatsUrl?: string | null
+  ebayUrl?: string | null
+  ebayItemId?: string | null
   createdAt: Date | string
 }
 
 interface ProductListProps {
   products: Product[]
+  onRefresh?: () => void
 }
 
-export default function ProductList({ products }: ProductListProps) {
+export default function ProductList({ products, onRefresh }: ProductListProps) {
   const [productImages, setProductImages] = useState<Record<string, string | null>>({})
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [postingToEbay, setPostingToEbay] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     // Load images for all products
@@ -84,6 +89,20 @@ export default function ProductList({ products }: ProductListProps) {
     }
   }
 
+  // Filter products by status
+  const filteredProducts = statusFilter === 'all' 
+    ? products 
+    : products.filter(p => p.status === statusFilter)
+
+  // Status counts for filter buttons
+  const statusCounts = {
+    all: products.length,
+    pending: products.filter(p => p.status === 'pending').length,
+    processing: products.filter(p => p.status === 'processing').length,
+    completed: products.filter(p => p.status === 'completed').length,
+    failed: products.filter(p => p.status === 'failed').length,
+  }
+
   if (products.length === 0) {
     return (
       <div className="text-center py-16">
@@ -100,12 +119,75 @@ export default function ProductList({ products }: ProductListProps) {
 
   return (
     <div className="space-y-4">
-      {products.map((product) => (
-        <div
-          key={product.id}
-          className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all p-6 cursor-pointer"
-          onClick={() => window.location.href = `/products/${product.id}/edit`}
-        >
+      {/* Status Filter */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-gray-700 mr-2">Filter op status:</span>
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              statusFilter === 'all'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Alle ({statusCounts.all})
+          </button>
+          <button
+            onClick={() => setStatusFilter('pending')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              statusFilter === 'pending'
+                ? 'bg-gray-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Wachtend ({statusCounts.pending})
+          </button>
+          <button
+            onClick={() => setStatusFilter('processing')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              statusFilter === 'processing'
+                ? 'bg-yellow-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Bezig ({statusCounts.processing})
+          </button>
+          <button
+            onClick={() => setStatusFilter('completed')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              statusFilter === 'completed'
+                ? 'bg-green-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Geplaatst ({statusCounts.completed})
+          </button>
+          <button
+            onClick={() => setStatusFilter('failed')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              statusFilter === 'failed'
+                ? 'bg-red-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Mislukt ({statusCounts.failed})
+          </button>
+        </div>
+      </div>
+
+      {filteredProducts.length === 0 ? (
+        <div className="text-center py-12 bg-white border border-gray-200 rounded-lg">
+          <p className="text-gray-500">Geen producten gevonden met status "{getStatusText(statusFilter)}"</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredProducts.map((product) => (
+            <div
+              key={product.id}
+              className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-all p-6 cursor-pointer"
+              onClick={() => window.location.href = `/products/${product.id}/edit`}
+            >
           <div className="flex items-start justify-between gap-4">
             {/* Product Image */}
             {productImages[product.id] ? (
@@ -135,11 +217,33 @@ export default function ProductList({ products }: ProductListProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-start gap-3 mb-3">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-2 flex-wrap">
                     <h3 className="text-lg font-bold text-gray-900 hover:text-indigo-600 transition-colors">{product.title}</h3>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(product.status)}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${getStatusColor(product.status)}`}>
+                      <span className={`w-2 h-2 rounded-full ${
+                        product.status === 'completed' ? 'bg-green-500' :
+                        product.status === 'processing' ? 'bg-yellow-500' :
+                        product.status === 'failed' ? 'bg-red-500' :
+                        'bg-gray-500'
+                      }`}></span>
                       {getStatusText(product.status)}
                     </span>
+                    {product.status === 'completed' && product.marktplaatsUrl && (
+                      <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Live op Marktplaats
+                      </span>
+                    )}
+                    {product.ebayUrl && (
+                      <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Live op eBay
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-2">{product.description}</p>
                 </div>
@@ -163,9 +267,24 @@ export default function ProductList({ products }: ProductListProps) {
                     href={product.marktplaatsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
                     className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
                   >
                     <span>Bekijk op Marktplaats</span>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+                {product.ebayUrl && (
+                  <a
+                    href={product.ebayUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    <span>Bekijk op eBay</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
@@ -175,6 +294,91 @@ export default function ProductList({ products }: ProductListProps) {
             </div>
             
             <div className="flex-shrink-0 flex items-center gap-2">
+              {(product.status === 'pending' || product.status === 'failed') && !product.ebayUrl && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (confirm('Weet je zeker dat je dit product op eBay wilt plaatsen?')) {
+                      setPostingToEbay(prev => ({ ...prev, [product.id]: true }))
+                      try {
+                        const response = await fetch(`/api/products/${product.id}/post-ebay`, {
+                          method: 'POST',
+                        })
+                        const data = await response.json()
+                        if (response.ok && data.success) {
+                          alert('Product succesvol geplaatst op eBay!')
+                          if (onRefresh) {
+                            onRefresh()
+                          } else {
+                            window.location.reload()
+                          }
+                        } else {
+                          alert('Fout bij plaatsen op eBay: ' + (data.error || data.details || 'Onbekende fout'))
+                        }
+                      } catch (error) {
+                        alert('Fout bij plaatsen op eBay')
+                      } finally {
+                        setPostingToEbay(prev => ({ ...prev, [product.id]: false }))
+                      }
+                    }
+                  }}
+                  disabled={postingToEbay[product.id]}
+                  className="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg font-semibold shadow-sm hover:bg-blue-200 transition-all flex items-center gap-2 whitespace-nowrap text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Plaats op eBay"
+                >
+                  {postingToEbay[product.id] ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Plaatsen...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Plaats op eBay
+                    </>
+                  )}
+                </button>
+              )}
+              {product.status === 'completed' && (
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (confirm('Weet je zeker dat je dit geplaatste product terug wilt zetten naar wachtend? Dit zal de Marktplaats link en statistieken wissen.')) {
+                      try {
+                        const response = await fetch('/api/products/set-status', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ productId: product.id, status: 'pending' }),
+                        })
+                        if (response.ok) {
+                          if (onRefresh) {
+                            onRefresh()
+                          } else {
+                            window.location.reload()
+                          }
+                        } else {
+                          const error = await response.json()
+                          alert('Fout bij resetten: ' + (error.error || 'Onbekende fout'))
+                        }
+                      } catch (error) {
+                        alert('Fout bij resetten van product status')
+                      }
+                    }
+                  }}
+                  className="bg-orange-100 text-orange-700 px-3 py-2 rounded-lg font-semibold shadow-sm hover:bg-orange-200 transition-all flex items-center gap-2 whitespace-nowrap text-sm"
+                  title="Zet terug naar wachtend"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+                  </svg>
+                  Terug naar wachtend
+                </button>
+              )}
               {product.status === 'failed' && (
                 <button
                   onClick={async (e) => {
@@ -187,7 +391,11 @@ export default function ProductList({ products }: ProductListProps) {
                           body: JSON.stringify({ productIds: [product.id] }),
                         })
                         if (response.ok) {
-                          window.location.reload()
+                          if (onRefresh) {
+                            onRefresh()
+                          } else {
+                            window.location.reload()
+                          }
                         } else {
                           alert('Fout bij resetten van product status')
                         }
@@ -219,8 +427,10 @@ export default function ProductList({ products }: ProductListProps) {
               </button>
             </div>
           </div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   )
 }

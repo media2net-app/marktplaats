@@ -104,3 +104,4 @@
    - Gebruik `./test_api.sh` om te testen
    - Check Vercel logs voor errors
    - Check Railway logs voor API call errors
+

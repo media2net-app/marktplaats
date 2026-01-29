@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lokaal script om pending producten naar Marktplaats te plaatsen.
+Lokaal script om pending producten naar Marktplaats te plaatsen (nieuwe modulaire versie).
 Dit script draait op je Mac en gebruikt de lokale API of productie API.
 
 Gebruik:
@@ -21,7 +21,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 scripts_dir = os.path.join(parent_dir, 'scripts')
 sys.path.insert(0, scripts_dir)
 
-from post_ads import run
+from marktplaats.main import run
 
 def log(message: str, level: str = "INFO"):
     """Log message with timestamp."""
@@ -35,7 +35,6 @@ async def main():
     env_api_key = os.environ.get('INTERNAL_API_KEY')
     
     # Load environment variables from .env files
-    # First try .env in local_worker, then parent directory
     env_paths = [
         os.path.join(os.path.dirname(__file__), '.env'),
         os.path.join(parent_dir, '.env.local'),
@@ -48,7 +47,6 @@ async def main():
             log(f"Loaded environment from: {env_path}")
             break
     else:
-        # Load from current environment
         load_dotenv(override=True)
         log("Using environment variables from system")
     
@@ -58,7 +56,7 @@ async def main():
     if env_api_key:
         os.environ['INTERNAL_API_KEY'] = env_api_key
     
-    # Get configuration (environment variable takes priority)
+    # Get configuration
     base_url = os.environ.get('API_BASE_URL') or os.getenv('API_BASE_URL') or os.getenv('NEXTAUTH_URL') or 'http://localhost:3000'
     api_key = os.environ.get('INTERNAL_API_KEY') or os.getenv('INTERNAL_API_KEY') or 'internal-key-change-in-production'
     
@@ -72,7 +70,7 @@ async def main():
     os.makedirs(media_root, exist_ok=True)
     
     log("=" * 70)
-    log("🖥️  Lokaal Marktplaats Worker")
+    log("🖥️  Lokaal Marktplaats Worker (Nieuwe Modulaire Versie)")
     log("=" * 70)
     log(f"API Base URL: {base_url}")
     log(f"Marktplaats URL: {marktplaats_url}")
@@ -84,14 +82,6 @@ async def main():
     
     # Use the pending products endpoint
     api_url = f"{base_url}/api/products/pending"
-    
-    # Headers with API key
-    headers = {
-        'x-api-key': api_key,
-        'Content-Type': 'application/json'
-    }
-    
-    # Query parameter as backup
     api_url_with_key = f"{api_url}?api_key={api_key}"
     
     log(f"Ophalen pending producten van: {api_url}")
@@ -99,6 +89,11 @@ async def main():
     
     try:
         # Fetch pending products
+        headers = {
+            'x-api-key': api_key,
+            'Content-Type': 'application/json'
+        }
+        
         response = requests.get(
             api_url_with_key,
             headers=headers,
@@ -129,7 +124,6 @@ async def main():
         
         # Check if response is array (products) or object (with debug info)
         if isinstance(response_data, dict) and 'products' in response_data:
-            # Response contains debug info
             pending_products = response_data.get('products', [])
             debug_info = response_data.get('debug', {})
             
@@ -151,7 +145,6 @@ async def main():
                 log("   3. Database is leeg")
                 return
         else:
-            # Response is array of products
             pending_products = response_data if isinstance(response_data, list) else []
         
         if not pending_products or len(pending_products) == 0:
@@ -169,13 +162,16 @@ async def main():
         log("Starten met plaatsen op Marktplaats...")
         log("")
         
-        # Process all pending products
+        # Process all pending products using new modular system
+        # Wait for manual login if needed
         results = await run(
             csv_path=None,
             api_url=api_url_with_key,
-            product_id=None,  # None means batch mode
+            product_id=None,
             login_only=False,
-            keep_open=False
+            keep_open=False,
+            wait_for_manual_login=True,
+            wait_seconds=10
         )
         
         if not results or len(results) == 0:
@@ -194,12 +190,10 @@ async def main():
             # Match result to product by article_number or title
             matching_product = None
             for product in pending_products:
-                # Match by article number (most reliable)
                 if (result.get('article_number') and 
                     product.get('article_number') == result.get('article_number')):
                     matching_product = product
                     break
-                # Match by title
                 elif (result.get('title') and 
                       product.get('title') == result.get('title')):
                     matching_product = product

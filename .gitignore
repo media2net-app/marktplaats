@@ -67,3 +67,6 @@ debug_*.jpg
 .vercel
 .env.backup
 .env.bak
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat

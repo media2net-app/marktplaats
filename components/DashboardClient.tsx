@@ -65,6 +65,8 @@ export default function DashboardClient({ products: initialProducts }: Dashboard
     failed: products.filter(p => p.status === 'failed').length,
   }
 
+  // Ensure Status Overzicht is always rendered
+
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
